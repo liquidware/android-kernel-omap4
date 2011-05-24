@@ -325,6 +325,24 @@ struct omap_dss_cpr_coefs {
 	s16 br, bg, bb;
 };
 
+enum omapdss_completion_status {
+	DSS_COMPLETION_PROGRAMMED = 0,
+	DSS_COMPLETION_DISPLAYED = 4,
+	DSS_COMPLETION_CHANGED_SET,
+	DSS_COMPLETION_CHANGED_CACHE,
+	DSS_COMPLETION_RELEASED = 8,
+	DSS_COMPLETION_ECLIPSED_SET,
+	DSS_COMPLETION_ECLIPSED_CACHE,
+	DSS_COMPLETION_ECLIPSED_SHADOW,
+	DSS_COMPLETION_TORN,
+};
+
+struct omapdss_ovl_cb {
+	/* optional callback method */
+	void (*fn)(void *data, int id, int status);
+	void *data;
+};
+
 struct omap_overlay_info {
 	bool enabled;
 
@@ -346,6 +364,8 @@ struct omap_overlay_info {
 	u8 global_alpha;
 	u8 pre_mult_alpha;
 	enum omap_overlay_zorder zorder;
+
+	struct omapdss_ovl_cb cb;
 };
 
 struct omap_overlay {
@@ -388,6 +408,8 @@ struct omap_overlay_manager_info {
 
 	bool cpr_enable;
 	struct omap_dss_cpr_coefs cpr_coefs;
+
+	struct omapdss_ovl_cb cb;
 };
 
 struct omap_overlay_manager {
