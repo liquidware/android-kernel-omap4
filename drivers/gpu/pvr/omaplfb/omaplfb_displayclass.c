@@ -1220,7 +1220,7 @@ static OMAPLFB_DEVINFO *OMAPLFBInitDev(unsigned uiFBDevID)
 
 	
 	aui32SyncCountList[DC_FLIP_COMMAND][0] = 0; 
-	aui32SyncCountList[DC_FLIP_COMMAND][1] = 2; 
+	aui32SyncCountList[DC_FLIP_COMMAND][1] = 5; 
 
 	
 
