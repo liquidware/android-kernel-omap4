@@ -585,6 +585,7 @@ struct manager_cache_data {
 	bool enlarge_update_area;
 
 	struct callback_states cb; /* callback data for the last 3 states */
+	bool skip_init;
 };
 
 static struct {
@@ -1199,8 +1200,12 @@ static int configure_dispc(void)
 		/* We don't need GO with manual update display. LCD iface will
 		 * always be turned off after frame, and new settings will be
 		 * taken in to use at next update */
-		if (!mc->manual_upd_display)
-			dispc_go(i);
+		if (!mc->manual_upd_display){
+			if(mc->skip_init)
+				mc->skip_init = false;
+			else
+				dispc_go(i);
+		}
 	}
 
 	if (busy)
@@ -1821,6 +1826,8 @@ static int omap_dss_mgr_apply(struct omap_overlay_manager *mgr)
 		dssdev->caps & OMAP_DSS_DISPLAY_CAP_MANUAL_UPDATE &&
 		dssdev->driver->get_update_mode(dssdev) !=
 			OMAP_DSS_UPDATE_AUTO;
+
+	mc->skip_init = dssdev->skip_init;
 
 skip_mgr:
 

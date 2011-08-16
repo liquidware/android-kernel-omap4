@@ -1325,7 +1325,6 @@ static struct omap_hwmod_class_sysconfig omap44xx_dss_sysc = {
 static struct omap_hwmod_class omap44xx_dss_hwmod_class = {
 	.name	= "dss",
 	.sysc	= &omap44xx_dss_sysc,
-	.reset	= omap_dss_reset,
 };
 
 /* dss */
