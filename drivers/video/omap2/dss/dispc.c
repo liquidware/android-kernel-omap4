@@ -2276,7 +2276,8 @@ static void dispc_enable_digit_out(enum omap_display_type type, bool enable)
 	init_completion(&frame_done_completion);
 
 	r = omap_dispc_register_isr(dispc_disable_isr, &frame_done_completion,
-			DISPC_IRQ_EVSYNC_EVEN | DISPC_IRQ_EVSYNC_ODD);
+			DISPC_IRQ_EVSYNC_EVEN | DISPC_IRQ_EVSYNC_ODD
+						| DISPC_IRQ_FRAMEDONETV);
 	if (r)
 		DSSERR("failed to register EVSYNC isr\n");
 
@@ -2298,7 +2299,8 @@ static void dispc_enable_digit_out(enum omap_display_type type, bool enable)
 
 	r = omap_dispc_unregister_isr(dispc_disable_isr,
 			&frame_done_completion,
-			DISPC_IRQ_EVSYNC_EVEN | DISPC_IRQ_EVSYNC_ODD);
+			DISPC_IRQ_EVSYNC_EVEN | DISPC_IRQ_EVSYNC_ODD
+						| DISPC_IRQ_FRAMEDONETV);
 	if (r)
 		DSSERR("failed to unregister EVSYNC isr\n");
 
