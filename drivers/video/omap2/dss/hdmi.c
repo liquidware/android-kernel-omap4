@@ -82,6 +82,7 @@ static struct {
 
 	struct clk *sys_clk;
 	struct clk *hdmi_clk;
+	int enabled;
 } hdmi;
 
 static const u8 edid_header[8] = {0x0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x0};
@@ -479,6 +480,9 @@ int omapdss_hdmi_display_enable(struct omap_dss_device *dssdev)
 
 	mutex_lock(&hdmi.lock);
 
+	if (hdmi.enabled)
+		goto err0;
+
 	r = omap_dss_start_device(dssdev);
 	if (r) {
 		DSSERR("failed to start device\n");
@@ -512,6 +516,8 @@ int omapdss_hdmi_display_enable(struct omap_dss_device *dssdev)
 		goto err4;
 	}
 
+	hdmi.enabled = true;
+
 	mutex_unlock(&hdmi.lock);
 	return 0;
 
@@ -537,6 +543,11 @@ void omapdss_hdmi_display_disable(struct omap_dss_device *dssdev)
 
 	mutex_lock(&hdmi.lock);
 
+	if (!hdmi.enabled)
+		goto done;
+
+	hdmi.enabled = false;
+
 	hdmi_power_off(dssdev);
 
 	if (dssdev->state != OMAP_DSS_DISPLAY_SUSPENDED) {
@@ -554,7 +565,7 @@ void omapdss_hdmi_display_disable(struct omap_dss_device *dssdev)
 		dssdev->platform_disable(dssdev);
 
 	omap_dss_stop_device(dssdev);
-
+done:
 	mutex_unlock(&hdmi.lock);
 }
 
