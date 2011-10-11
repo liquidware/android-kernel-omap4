@@ -736,6 +736,9 @@ int omap_rfbi_configure(struct omap_dss_device *dssdev, int pixel_size,
 		int data_lines);
 
 int dss_runtime_pm_enabled(void);
+int omap_dss_manager_unregister_callback(struct omap_overlay_manager *mgr,
+					 struct omapdss_ovl_cb *cb);
+
 /* generic callback handling */
 static inline void dss_ovl_cb(struct omapdss_ovl_cb *cb, int id, int status)
 {
