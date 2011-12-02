@@ -18,4 +18,7 @@ panda-hdmi-audio
 panda-drm-dvi-1080p
 panda-drm-hdmi-1080p
 panda-cam
-
+panda-sgx-1080p
+panda-android-boot
+panda-android-mem-suspend
+panda-android-adb
