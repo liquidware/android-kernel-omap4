@@ -50,8 +50,8 @@
 #define OMAP4460_BGAP_STATUS_OFFSET		0x388
 #define OMAP4460_FUSE_OPP_BGAP			-0x260
 
-#define OMAP4460_TSHUT_HOT		800	/* 122 deg C */
-#define OMAP4460_TSHUT_COLD		795	/* 100 deg C */
+#define OMAP4460_TSHUT_HOT		900	/* 122 deg C */
+#define OMAP4460_TSHUT_COLD		895	/* 100 deg C */
 #define OMAP4460_T_HOT			800	/* 73 deg C */
 #define OMAP4460_T_COLD			795	/* 71 deg C */
 #define OMAP4460_MAX_FREQ		2000000
@@ -594,6 +594,7 @@ int omap4460plus_temp_sensor_init(struct scm *scm_ptr)
 			ret = -ENOMEM;
 		}
 	}
+
 	clk_enable(scm_ptr->fclock);
 	clk_rate = clk_round_rate(scm_ptr->div_clk,
 				  scm_ptr->ts_data[0]->max_freq);
@@ -610,7 +611,6 @@ int omap4460plus_temp_sensor_init(struct scm *scm_ptr)
 	}
 
 	scm_ptr->clk_rate = clk_rate;
-
 	enable_continuous_mode(scm_ptr);
 	/* 1 clk cycle */
 	for (i = 0; i < scm_ptr->cnt; i++)
