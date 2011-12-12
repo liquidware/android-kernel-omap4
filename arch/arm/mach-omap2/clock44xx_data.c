@@ -3215,7 +3215,7 @@ static struct omap_clk omap44xx_clks[] = {
 	CLK(NULL,	"aes2_fck",			&aes2_fck,	CK_44XX),
 	CLK(NULL,	"aess_fck",			&aess_fck,	CK_44XX),
 	CLK(NULL,	"bandgap_fclk",			&bandgap_fclk,	CK_44XX),
-	CLK("omap4plus_scm.0",	"fck",			&bandgap_ts_fclk,	CK_446X),
+	CLK("omap4plus_scm.0",	"ts_fck",			&bandgap_ts_fclk,	CK_446X),
 	CLK(NULL,	"des3des_fck",			&des3des_fck,	CK_44XX),
 	CLK(NULL,	"dmic_sync_mux_ck",		&dmic_sync_mux_ck,	CK_44XX),
 	CLK(NULL,	"dmic_fck",			&dmic_fck,	CK_44XX),
