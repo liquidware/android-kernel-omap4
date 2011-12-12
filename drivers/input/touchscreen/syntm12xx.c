@@ -18,6 +18,7 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/module.h>
 #include <linux/input.h>
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
