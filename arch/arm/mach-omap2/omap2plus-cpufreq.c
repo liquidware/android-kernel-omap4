@@ -27,6 +27,7 @@
 #include <linux/io.h>
 #include <linux/opp.h>
 #include <linux/cpu.h>
+#include <linux/module.h>
 
 #include <asm/system.h>
 #include <asm/smp_plat.h>
@@ -259,7 +260,7 @@ static int __init omap_cpufreq_init(void)
 		return -EINVAL;
 	}
 
-	mpu_dev = omap2_get_mpuss_device();
+	mpu_dev = omap_device_get_by_hwmod_name("mpu");
 	if (!mpu_dev) {
 		pr_warning("%s: unable to get the mpu device\n", __func__);
 		return -EINVAL;
