@@ -833,11 +833,11 @@ static struct omap_hwmod_class omap44xx_bandgap_hwmod_class = {
 };
 
 /* bandgap */
-static struct omap_hwmod_opt_clk bandgap_opt_clks[] = {
+static struct omap_hwmod_opt_clk bandgap443x_opt_clks[] = {
 	{ .role = "fclk", .clk = "bandgap_fclk" },
 };
 
-static struct omap_hwmod omap44xx_bandgap_hwmod = {
+static struct omap_hwmod omap443x_bandgap_hwmod = {
 	.name		= "bandgap",
 	.class		= &omap44xx_bandgap_hwmod_class,
 	.clkdm_name	= "l4_wkup_clkdm",
@@ -846,8 +846,24 @@ static struct omap_hwmod omap44xx_bandgap_hwmod = {
 			.clkctrl_offs = OMAP4_CM_WKUP_BANDGAP_CLKCTRL_OFFSET,
 		},
 	},
-	.opt_clks	= bandgap_opt_clks,
-	.opt_clks_cnt	= ARRAY_SIZE(bandgap_opt_clks),
+	.opt_clks	= bandgap443x_opt_clks,
+	.opt_clks_cnt	= ARRAY_SIZE(bandgap443x_opt_clks),
+};
+
+static struct omap_hwmod_opt_clk bandgap446x_opt_clks[] = {
+	{ .role = "fclk", .clk = "bandgap_ts_fclk" },
+};
+
+static struct omap_hwmod omap446x_bandgap_hwmod = {
+	.name		= "bandgap",
+	.class		= &omap44xx_bandgap_hwmod_class,
+	.prcm		= {
+		.omap4 = {
+			.clkctrl_reg = OMAP4430_CM_WKUP_BANDGAP_CLKCTRL,
+		},
+	},
+	.opt_clks	= bandgap446x_opt_clks,
+	.opt_clks_cnt	= ARRAY_SIZE(bandgap446x_opt_clks),
 };
 
 /*
@@ -5315,9 +5331,6 @@ static __initdata struct omap_hwmod *omap44xx_hwmods[] = {
 	/* aess class */
 /*	&omap44xx_aess_hwmod, */
 
-	/* bandgap class */
-	&omap44xx_bandgap_hwmod,
-
 	/* counter class */
 /*	&omap44xx_counter_32k_hwmod, */
 
@@ -5438,7 +5451,27 @@ static __initdata struct omap_hwmod *omap44xx_hwmods[] = {
 	NULL,
 };
 
+static __initdata struct omap_hwmod *omap443x_hwmods[] = { 
+        /* bandgap class */                                                     
+        &omap443x_bandgap_hwmod,                                                
+};
+
+static __initdata struct omap_hwmod *omap446x_hwmods[] = {
+        /* bandgap class */                                                     
+        &omap446x_bandgap_hwmod,
+};
+
 int __init omap44xx_hwmod_init(void)
 {
-	return omap_hwmod_register(omap44xx_hwmods);
+	int ret;
+
+	ret = omap_hwmod_register(omap44xx_hwmods);
+
+	if (cpu_is_omap443x())
+		ret = omap_hwmod_register(omap446x_hwmods);
+
+	if (cpu_is_omap446x())
+		ret = omap_hwmod_register(omap446x_hwmods);
+
+	return ret;
 }
