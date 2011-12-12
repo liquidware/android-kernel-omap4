@@ -193,8 +193,9 @@ static void __init prcm_setup_regs(void)
 {
 	struct clk *dpll_abe_ck, *dpll_core_ck, *dpll_iva_ck;
 	struct clk *dpll_mpu_ck, *dpll_per_ck, *dpll_usb_ck;
-	struct clk *dpll_unipro_ck;
+
 	/*Enable all the DPLL autoidle */
+
 	dpll_abe_ck = clk_get(NULL, "dpll_abe_ck");
 	omap3_dpll_allow_idle(dpll_abe_ck);
 	dpll_core_ck = clk_get(NULL, "dpll_core_ck");
@@ -205,13 +206,13 @@ static void __init prcm_setup_regs(void)
 		dpll_mpu_ck = clk_get(NULL, "virt_dpll_mpu_ck");
 	else
 		dpll_mpu_ck = clk_get(NULL, "dpll_mpu_ck");
-	omap3_dpll_allow_idle(dpll_mpu_ck);
+	if (dpll_mpu_ck)
+		omap3_dpll_allow_idle(dpll_mpu_ck);
 	dpll_per_ck = clk_get(NULL, "dpll_per_ck");
 	omap3_dpll_allow_idle(dpll_per_ck);
 	dpll_usb_ck = clk_get(NULL, "dpll_usb_ck");
 	omap3_dpll_allow_idle(dpll_usb_ck);
-	dpll_unipro_ck = clk_get(NULL, "dpll_unipro_ck");
-	omap3_dpll_allow_idle(dpll_unipro_ck);
+
 	/* Enable autogating for all DPLL post dividers */
 	omap4_cminst_rmw_inst_reg_bits(OMAP4430_DPLL_CLKOUT_GATE_CTRL_MASK, 0x0,
 		OMAP4430_CM1_PARTITION, OMAP4430_CM1_CKGEN_INST, OMAP4_CM_DIV_M2_DPLL_MPU_OFFSET);
@@ -395,6 +396,8 @@ static int __init omap4_pm_init(void)
 				"wakeup dependency\n");
 		goto err2;
 	}
+
+	prcm_setup_regs();
 
 	ret = omap4_mpuss_init();
 	if (ret) {
