@@ -200,7 +200,7 @@ static struct powerdomain emu_44xx_pwrdm = {
 };
 
 /* mpu_44xx_pwrdm: Modena processor and the Neon coprocessor power domain */
-static struct powerdomain mpu_44xx_pwrdm = {
+static struct powerdomain mpu_443x_pwrdm = {
 	.name		  = "mpu_pwrdm",
 	.voltdm		  = { .name = "mpu" },
 	.prcm_offs	  = OMAP4430_PRM_MPU_INST,
@@ -217,6 +217,23 @@ static struct powerdomain mpu_44xx_pwrdm = {
 		[0] = PWRSTS_ON,	/* mpu_l1 */
 		[1] = PWRSTS_ON,	/* mpu_l2 */
 		[2] = PWRSTS_ON,	/* mpu_ram */
+	},
+};
+
+static struct powerdomain mpu_446x_pwrdm = {
+	.name		  = "mpu_pwrdm",
+	.prcm_offs	  = OMAP4430_PRM_MPU_INST,
+	.prcm_partition	  = OMAP4430_PRM_PARTITION,
+	.pwrsts		  = PWRSTS_RET_ON,
+	.pwrsts_logic_ret = PWRSTS_OFF_RET,
+	.banks		  = 2,
+	.pwrsts_mem_ret	= {
+		[0] = PWRSTS_OFF_RET,	/* mpu_l2 */
+		[1] = PWRSTS_RET,	/* mpu_ram */
+	},
+	.pwrsts_mem_on	= {
+		[0] = PWRSTS_ON,	/* mpu_l2 */
+		[1] = PWRSTS_ON,	/* mpu_ram */
 	},
 };
 
@@ -340,7 +357,6 @@ static struct powerdomain *powerdomains_omap44xx[] __initdata = {
 	&cpu0_44xx_pwrdm,
 	&cpu1_44xx_pwrdm,
 	&emu_44xx_pwrdm,
-	&mpu_44xx_pwrdm,
 	&ivahd_44xx_pwrdm,
 	&cam_44xx_pwrdm,
 	&l3init_44xx_pwrdm,
@@ -350,9 +366,23 @@ static struct powerdomain *powerdomains_omap44xx[] __initdata = {
 	NULL
 };
 
+static struct powerdomain *powerdomains_omap443x[] __initdata = { 
+	&mpu_443x_pwrdm,
+	NULL
+};
+
+static struct powerdomain *powerdomains_omap446x[] __initdata = {               
+        &mpu_446x_pwrdm,                                                        
+        NULL                                                                    
+};
+
 void __init omap44xx_powerdomains_init(void)
 {
 	pwrdm_register_platform_funcs(&omap4_pwrdm_operations);
 	pwrdm_register_pwrdms(powerdomains_omap44xx);
+	if (cpu_is_omap443x())
+		pwrdm_register_pwrdms(powerdomains_omap443x);
+	if (cpu_is_omap446x())
+		pwrdm_register_pwrdms(powerdomains_omap446x);
 	pwrdm_complete_init();
 }
