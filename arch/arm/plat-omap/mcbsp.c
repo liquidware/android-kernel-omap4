@@ -245,6 +245,8 @@ int omap_mcbsp_dma_reg_params(unsigned int id, unsigned int stream)
 }
 EXPORT_SYMBOL(omap_mcbsp_dma_reg_params);
 
+#if defined CONFIG_ARCH_OMAP3 || defined CONFIG_ARCH_OMAP4
+
 static void omap_st_on(struct omap_mcbsp *mcbsp)
 {
 	unsigned int w;
@@ -257,16 +259,16 @@ static void omap_st_on(struct omap_mcbsp *mcbsp)
 	MCBSP_WRITE(mcbsp, SSELCR, w | SIDETONEEN);
 
 	/* Enable Sidetone from Sidetone Core */
-	w = MCBSP_ST_READ(mcbsp, SSELCR);
-	MCBSP_ST_WRITE(mcbsp, SSELCR, w | ST_SIDETONEEN);
+	w = omap_mcbsp_st_read(mcbsp, OMAP_ST_REG_SSELCR);
+	omap_mcbsp_st_write(mcbsp, OMAP_ST_REG_SSELCR, w | ST_SIDETONEEN);
 }
 
 static void omap_st_off(struct omap_mcbsp *mcbsp)
 {
 	unsigned int w;
 
-	w = MCBSP_ST_READ(mcbsp, SSELCR);
-	MCBSP_ST_WRITE(mcbsp, SSELCR, w & ~(ST_SIDETONEEN));
+	w = omap_mcbsp_st_read(mcbsp, OMAP_ST_REG_SSELCR);
+	omap_mcbsp_st_write(mcbsp, OMAP_ST_REG_SSELCR, w & ~(ST_SIDETONEEN));
 
 	w = MCBSP_READ(mcbsp, SSELCR);
 	MCBSP_WRITE(mcbsp, SSELCR, w & ~(SIDETONEEN));
@@ -279,23 +281,23 @@ static void omap_st_fir_write(struct omap_mcbsp *mcbsp, s16 *fir)
 {
 	u16 val, i;
 
-	val = MCBSP_ST_READ(mcbsp, SSELCR);
+	val = omap_mcbsp_st_read(mcbsp, OMAP_ST_REG_SSELCR);
 
 	if (val & ST_COEFFWREN)
-		MCBSP_ST_WRITE(mcbsp, SSELCR, val & ~(ST_COEFFWREN));
+		omap_mcbsp_st_write(mcbsp, OMAP_ST_REG_SSELCR, val & ~(ST_COEFFWREN));
 
-	MCBSP_ST_WRITE(mcbsp, SSELCR, val | ST_COEFFWREN);
+	omap_mcbsp_st_write(mcbsp, OMAP_ST_REG_SSELCR, val | ST_COEFFWREN);
 
 	for (i = 0; i < 128; i++)
-		MCBSP_ST_WRITE(mcbsp, SFIRCR, fir[i]);
+		omap_mcbsp_st_write(mcbsp, OMAP_ST_REG_SFIRCR, fir[i]);
 
 	i = 0;
 
-	val = MCBSP_ST_READ(mcbsp, SSELCR);
+	val = omap_mcbsp_st_read(mcbsp, OMAP_ST_REG_SSELCR);
 	while (!(val & ST_COEFFWRDONE) && (++i < 1000))
-		val = MCBSP_ST_READ(mcbsp, SSELCR);
+		val = omap_mcbsp_st_read(mcbsp, OMAP_ST_REG_SSELCR);
 
-	MCBSP_ST_WRITE(mcbsp, SSELCR, val & ~(ST_COEFFWREN));
+	omap_mcbsp_st_write(mcbsp, OMAP_ST_REG_SSELCR, val & ~(ST_COEFFWREN));
 
 	if (i == 1000)
 		dev_err(mcbsp->dev, "McBSP FIR load error!\n");
@@ -306,9 +308,9 @@ static void omap_st_chgain(struct omap_mcbsp *mcbsp)
 	u16 w;
 	struct omap_mcbsp_st_data *st_data = mcbsp->st_data;
 
-	w = MCBSP_ST_READ(mcbsp, SSELCR);
+	w = omap_mcbsp_st_read(mcbsp, OMAP_ST_REG_SSELCR);
 
-	MCBSP_ST_WRITE(mcbsp, SGAINCR, ST_CH0GAIN(st_data->ch0gain) | \
+	omap_mcbsp_st_write(mcbsp, OMAP_ST_REG_SGAINCR, ST_CH0GAIN(st_data->ch0gain) | \
 		      ST_CH1GAIN(st_data->ch1gain));
 }
 
@@ -1060,17 +1062,6 @@ static const struct attribute_group additional_attr_group = {
 	.attrs = (struct attribute **)additional_attrs,
 };
 
-static const struct attribute *additional_attrs[] = {
-	&dev_attr_max_tx_thres.attr,
-	&dev_attr_max_rx_thres.attr,
-	&dev_attr_dma_op_mode.attr,
-	NULL,
-};
-
-static const struct attribute_group additional_attr_group = {
-	.attrs = (struct attribute **)additional_attrs,
-};
-
 static inline int __devinit omap_additional_add(struct device *dev)
 {
 	return sysfs_create_group(&dev->kobj, &additional_attr_group);
@@ -1082,7 +1073,7 @@ static inline void __devexit omap_additional_remove(struct device *dev)
 }
 #endif
 
-#ifdef CONFIG_ARCH_OMAP3
+//#ifdef CONFIG_ARCH_OMAP3
 static ssize_t st_taps_show(struct device *dev,
 			    struct device_attribute *attr, char *buf)
 {
