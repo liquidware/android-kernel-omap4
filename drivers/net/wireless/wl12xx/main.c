@@ -1107,7 +1107,12 @@ static int wl1271_fetch_nvs(struct wl1271 *wl)
 	const struct firmware *fw;
 	int ret;
 
-	ret = request_firmware(&fw, WL12XX_NVS_NAME, wl1271_wl_to_dev(wl));
+	if (wl->chip.id == CHIP_ID_1283_PG20) {
+		wl1271_notice("1283 chip detected, adapting nvs filename");
+		ret = request_firmware(&fw, WL128X_NVS_NAME, wl1271_wl_to_dev(wl));
+	} else {
+		ret = request_firmware(&fw, WL12XX_NVS_NAME, wl1271_wl_to_dev(wl));
+	}
 
 	if (ret < 0) {
 		wl1271_error("could not get nvs file: %d", ret);
