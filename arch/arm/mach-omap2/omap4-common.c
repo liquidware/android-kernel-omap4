@@ -55,6 +55,7 @@ unsigned long omap_get_dram_barrier_base(void)
 {
 	return dram_barrier_base;
 }
+EXPORT_SYMBOL(omap_get_dram_barrier_base);
 
 static int __init omap_barriers_init(void)
 {

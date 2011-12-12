@@ -72,6 +72,7 @@ unsigned long omap_get_sram_barrier_base(void)
 {
 	return omap_barrier_base;
 }
+EXPORT_SYMBOL_GPL(omap_get_sram_barrier_base);
 
 /*
  * Depending on the target RAMFS firewall setup, the public usable amount of
@@ -172,6 +173,14 @@ static void __init omap_map_sram(void)
 	if (omap_sram_size == 0)
 		return;
 
+        omap_sram_start = ROUND_DOWN(omap_sram_start, PAGE_SIZE);               
+        omap_sram_base = __arm_ioremap_exec(omap_sram_start, omap_sram_size,    
+                                                cached);                        
+        if (!omap_sram_base) {                                                  
+                pr_err("SRAM: Could not map\n");                                
+                return;                                                         
+        }  
+
 	omap_sram_io_desc[0].virtual = omap_sram_base;
 	base = omap_sram_start;
 	base = ROUND_DOWN(base, PAGE_SIZE);
@@ -205,14 +214,6 @@ static void __init omap_map_sram(void)
 		omap_sram_io_desc[1].length = PAGE_SIZE;
 		omap_sram_io_desc[1].type = MT_MEMORY_SO;
 		nr_desc = 2;
-	}
-
-	omap_sram_start = ROUND_DOWN(omap_sram_start, PAGE_SIZE);
-	omap_sram_base = __arm_ioremap_exec(omap_sram_start, omap_sram_size,
-						cached);
-	if (!omap_sram_base) {
-		pr_err("SRAM: Could not map\n");
-		return;
 	}
 
 	iotable_init(omap_sram_io_desc, nr_desc);
