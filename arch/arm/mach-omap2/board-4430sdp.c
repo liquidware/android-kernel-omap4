@@ -46,6 +46,7 @@
 #include "hsmmc.h"
 #include "control.h"
 #include "common-board-devices.h"
+#include "pm.h"
 
 #define ETH_KS8851_IRQ			34
 #define ETH_KS8851_POWER_ON		48
@@ -59,6 +60,8 @@
 
 #define GPIO_WIFI_PMENA		54
 #define GPIO_WIFI_IRQ		53
+
+#define TPS62361_GPIO   7
 
 static const int sdp4430_keymap[] = {
 	KEY(0, 0, KEY_E),
@@ -976,6 +979,14 @@ static void __init omap_4430sdp_init(void)
 		pr_err("Keypad initialization failed: %d\n", status);
 
 	omap_4430sdp_display_init();
+
+	if (cpu_is_omap446x()) {
+		/* Vsel0 = gpio, vsel1 = gnd */
+		status = omap_tps6236x_board_setup(true, TPS62361_GPIO, -1,
+					OMAP_PIN_OFF_OUTPUT_HIGH, -1);
+		if (status)
+			pr_err("TPS62361 initialization failed: %d\n", status);
+	}
 }
 
 MACHINE_START(OMAP_4430SDP, "OMAP4430 4430SDP board")
