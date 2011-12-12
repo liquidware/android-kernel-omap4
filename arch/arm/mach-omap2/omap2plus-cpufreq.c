@@ -302,8 +302,11 @@ void omap_thermal_step_freq_up(void)
 	pr_err("%s: temperature reduced, stepping up to %i\n",
 		__func__, current_target_freq);
 
-	cur = omap_getspeed(0);
-	omap_cpufreq_scale(current_target_freq, cur);
+	if (current_target_freq) {
+
+		cur = omap_getspeed(0);
+		omap_cpufreq_scale(current_target_freq, cur);
+	}
 
 	mutex_unlock(&omap_cpufreq_lock);
 }
