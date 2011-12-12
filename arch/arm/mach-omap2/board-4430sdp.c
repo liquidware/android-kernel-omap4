@@ -324,26 +324,6 @@ static struct led_pwm_platform_data sdp4430_pwm_data = {
 	.leds		= sdp4430_pwm_leds,
 };
 
-static struct resource omap4_hdmi_resources[] = {
-        [0] = {
-                .start = OMAP44XX_DSS_HDMI_L3_BASE,
-                .end   = OMAP44XX_DSS_HDMI_L3_BASE + SZ_4M - 1,
-                .flags = IORESOURCE_MEM,
-        },
-        [1] = {
-                .start = OMAP44XX_DMA_DSS_HDMI_REQ,
-                .end   = OMAP44XX_DMA_DSS_HDMI_REQ,
-                .flags = IORESOURCE_DMA,
-        },
-};
-
-static struct platform_device omap4_hdmi_audio_device = {
-	.name	= "hdmi-audio-dai",
-	.id	= -1,
-	.num_resources = ARRAY_SIZE(omap4_hdmi_resources),
-	.resource = omap4_hdmi_resources,
-};
-
 static struct platform_device sdp4430_leds_pwm = {
 	.name	= "leds_pwm",
 	.id	= -1,
@@ -449,13 +429,11 @@ static struct platform_device *sdp4430_devices[] __initdata = {
 	&sdp4430_vbat,
 	&wl128x_device,
 	&btwilink_device,
-	&omap4_hdmi_audio_device,
 };
 
 static void __init omap_4430sdp_init_early(void)
 {
 	omap2_init_common_infrastructure();
-	omap2_init_common_devices(NULL, NULL);
 }
 
 static struct omap_musb_board_data musb_board_data = {
