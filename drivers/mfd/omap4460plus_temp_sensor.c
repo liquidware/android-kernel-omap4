@@ -588,7 +588,11 @@ int omap4460plus_temp_sensor_init(struct scm *scm_ptr)
 			scm_ptr->therm_fw[0]->dev = scm_ptr->dev;
 			scm_ptr->therm_fw[0]->dev_ops = &omap_sensor_ops;
 			scm_ptr->therm_fw[0]->sen_id = 0;
-			thermal_sensor_dev_register(scm_ptr->therm_fw[0]);
+			ret = thermal_sensor_dev_register(scm_ptr->therm_fw[0]);
+			if (ret) {
+				pr_err("**** failed to register thermal sensor\n");
+				goto clk_err;
+			}
 		} else {
 			pr_err("%s:Cannot alloc memory for thermal fw\n",
 			       __func__);

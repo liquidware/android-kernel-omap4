@@ -71,6 +71,8 @@ struct thermal_domain {
 	struct list_head cooling_agents;
 };
 
+struct thermal_dev *deferred_tdev;
+
 /**
  * thermal_cooling_set_level() - Calls a list of cooling devices to cool the
  *				thermal domain
@@ -163,8 +165,10 @@ int thermal_request_temp(struct thermal_dev *tdev)
 	struct thermal_domain *thermal_domain;
 	int ret = -ENODEV;
 
+	pr_err("thermal_request_temp\n");
+
 	if (list_empty(&thermal_domain_list)) {
-		pr_debug("%s: No thermal sensors registered\n", __func__);
+		pr_err("%s: No thermal sensors registered\n", __func__);
 		return ret;
 	}
 
@@ -185,6 +189,7 @@ report:
 	    thermal_domain->temp_sensor->dev_ops &&
 	    thermal_domain->temp_sensor->dev_ops->report_temp) {
 			ret = thermal_domain->temp_sensor->dev_ops->report_temp(thermal_domain->temp_sensor);
+			pr_err("   thermal_request_temp got %d\n", ret);
 	} else {
 		pr_err("%s:Getting temp is not supported for domain %s\n",
 			__func__, thermal_domain->domain_name);
@@ -279,11 +284,14 @@ check_domain:
 	mutex_unlock(&thermal_domain_list_lock);
 	if (domain->temp_sensor &&
 		domain->governor &&
-		domain->cooling_agents.next)
+		domain->cooling_agents.next) {
+		 pr_err("%s: Getting initial temp for %s domain\n",      
+                        __func__, domain->domain_name); 
 		thermal_request_temp(tdev);
+	}
 	else
-		pr_debug("%s:Not all components registered for %s domain\n",
-			__func__, domain->domain_name);
+		pr_err("%s:Not all components registered for %s domain sensor %p, gov=%p, cooling=%p\n",
+			__func__, domain->domain_name, domain->temp_sensor, domain->governor, domain->cooling_agents.next);
 
 	return 0;
 }
@@ -412,7 +420,13 @@ init_cooling_agent:
 	list_add(&therm_dom->node, &thermal_domain_list);
 out:
 	mutex_unlock(&thermal_domain_list_lock);
-	thermal_init_thermal_state(tdev);
+
+	if (deferred_tdev) {
+		pr_err("thermal_cooling_dev_register: doing deferred tdev\n");
+		thermal_sensor_dev_register(deferred_tdev);
+		deferred_tdev = NULL;
+	} else
+		thermal_init_thermal_state(tdev);
 
 	return 0;
 }
@@ -455,23 +469,26 @@ int thermal_sensor_dev_register(struct thermal_dev *tdev)
 
 	tdev->index = atomic_inc_return(&device_count);
 	if (list_empty(&thermal_domain_list)) {
-		pr_debug("%s:Need to init the %s domain\n",
+		pr_err("%s:Need to init the %s domain\n",
 			__func__, tdev->domain_name);
-		goto init_sensor;
-	} else {
-		mutex_lock(&thermal_domain_list_lock);
-		list_for_each_entry(domain, &thermal_domain_list, node) {
-			pr_info("%s:Found %s %s\n", __func__,
-				domain->domain_name, tdev->domain_name);
-			if (!strcmp(domain->domain_name, tdev->domain_name)) {
-				pr_info("%s:Adding %s sensor\n",
-					__func__, tdev->name);
-				domain->temp_sensor = tdev;
-				goto out;
-			}
-		}
-		mutex_unlock(&thermal_domain_list_lock);
+
+		deferred_tdev = tdev;
+
+		return 0;
 	}
+
+	mutex_lock(&thermal_domain_list_lock);
+	list_for_each_entry(domain, &thermal_domain_list, node) {
+		pr_err("%s:Found %s %s\n", __func__,
+			domain->domain_name, tdev->domain_name);
+		if (!strcmp(domain->domain_name, tdev->domain_name)) {
+			pr_err("%s:Adding %s sensor\n",
+				__func__, tdev->name);
+			domain->temp_sensor = tdev;
+			goto out;
+		}
+	}
+	mutex_unlock(&thermal_domain_list_lock);
 
 init_sensor:
 	therm_dom = kzalloc(sizeof(struct thermal_domain),
