@@ -152,8 +152,8 @@ static int omap_init_mcbsp(struct omap_hwmod *oh, void *unused)
 		pdata->mux_signal = omap2_mcbsp1_mux_rx_clk;
 
 	if (oh->class->rev == MCBSP_CONFIG_TYPE3) {
-		strcpy(pdata->clks_pad_src, "pad_clks_ck");
-		strcpy(pdata->clks_prcm_src, "mcbsp2_sync_mux_ck");
+		strcpy(pdata->clks_pad_src, "pad_fck");
+		strcpy(pdata->clks_prcm_src, "prcm_fck");
 
 		if (id == 2)
 			/* The FIFO has 1024 + 256 locations */
@@ -163,7 +163,7 @@ static int omap_init_mcbsp(struct omap_hwmod *oh, void *unused)
 			pdata->buffer_size = 0x80;
 	} else if (oh->class->rev == MCBSP_CONFIG_TYPE4) {
 		strcpy(pdata->clks_pad_src, "pad_clks_ck");
-		strcpy(pdata->clks_prcm_src, "mcbsp2_sync_mux_ck");
+		sprintf(pdata->clks_prcm_src, "mcbsp%d_sync_mux_ck", id);
 
 		/* The FIFO has 128 locations for all instances */
 		pdata->buffer_size = 0x80;
