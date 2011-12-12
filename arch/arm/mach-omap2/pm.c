@@ -227,6 +227,9 @@ postcore_initcall(omap2_common_pm_init);
 
 static int __init omap2_common_pm_late_init(void)
 {
+	/* Init the OMAP TWL parameters */
+	omap_init_all_pmic();
+
 	/* Init the voltage layer */
 	omap_pmic_late_init();
 	omap_voltage_late_init();
