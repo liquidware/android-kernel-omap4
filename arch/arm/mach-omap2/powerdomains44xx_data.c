@@ -222,6 +222,7 @@ static struct powerdomain mpu_443x_pwrdm = {
 
 static struct powerdomain mpu_446x_pwrdm = {
 	.name		  = "mpu_pwrdm",
+        .voltdm           = { .name = "mpu" },                                  
 	.prcm_offs	  = OMAP4430_PRM_MPU_INST,
 	.prcm_partition	  = OMAP4430_PRM_PARTITION,
 	.pwrsts		  = PWRSTS_RET_ON,
