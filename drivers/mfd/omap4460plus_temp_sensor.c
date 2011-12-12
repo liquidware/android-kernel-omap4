@@ -39,7 +39,12 @@
 #include <plat/scm.h>
 #include <linux/mfd/omap4_scm.h>
 #include <mach/ctrl_module_core_44xx.h>
+#if defined(CONFIG_THERMAL_FRAMEWORK)
 #include <linux/thermal_framework.h>
+#elif defined(CONFIG_THERMAL)
+#include <linux/thermal.h>
+#include <linux/thermal_freq.h>
+#endif
 
 /* Offsets from the base of temperature sensor registers */
 
@@ -493,6 +498,7 @@ int omap4460_tshut_init(struct scm *scm_ptr)
 	return 0;
 }
 
+#if defined(CONFIG_THERMAL_FRAMEWORK)
 static int omap_report_temp(struct thermal_dev *tdev)
 {
 	struct platform_device *pdev = to_platform_device(tdev->dev);
@@ -541,6 +547,24 @@ static struct thermal_dev_ops omap_sensor_ops = {
 	.set_temp_report_rate = omap_set_measuring_rate,
 };
 
+#elif defined(CONFIG_THERMAL)
+/* The upper and lower values below are preadjusted for the "hotspot" factor */
+static struct thermal_freq_table trip_table[] = {
+	{66000, 1200000, 2000},
+	{73000, 920000, 2000},
+	{79000, 700000, 1000},
+	{86000, 350000, 500},
+	{93000, 350000, 500},
+};
+
+static int scm_get_temp(void *privdata)
+{
+	struct scm *scm = privdata;
+
+	return omap4460plus_scm_read_temp(scm, 0);
+}
+#endif
+
 int omap4460plus_temp_sensor_init(struct scm *scm_ptr)
 {
 	struct omap_temp_sensor_registers *reg_ptr;
@@ -560,6 +584,7 @@ int omap4460plus_temp_sensor_init(struct scm *scm_ptr)
 		ret = -ENOMEM;
 		goto fail_alloc;
 	}
+#if defined(CONFIG_THERMAL_FRAMEWORK)
 	scm_ptr->therm_fw =
 	    kzalloc(sizeof(struct thermal_dev *) * scm_ptr->cnt, GFP_KERNEL);
 	if (!scm_ptr->therm_fw) {
@@ -569,6 +594,7 @@ int omap4460plus_temp_sensor_init(struct scm *scm_ptr)
 	for (i = 0; i < scm_ptr->cnt; i++)
 		scm_ptr->therm_fw[i] =
 		    kzalloc(sizeof(struct thermal_dev), GFP_KERNEL);
+#endif
 
 	if (scm_ptr->rev == 1) {
 		scm_ptr->registers[0] = &omap4460_mpu_temp_sensor_registers;
@@ -582,6 +608,7 @@ int omap4460plus_temp_sensor_init(struct scm *scm_ptr)
 		if (omap4plus_scm_readl(scm_ptr,
 					scm_ptr->registers[0]->bgap_efuse))
 			pr_info("Non-trimmed BGAP, Temp not accurate\n");
+#if defined(CONFIG_THERMAL_FRAMEWORK)
 		if (scm_ptr->therm_fw) {
 			scm_ptr->therm_fw[0]->name = "omap_ondie_sensor";
 			scm_ptr->therm_fw[0]->domain_name = "cpu";
@@ -598,6 +625,11 @@ int omap4460plus_temp_sensor_init(struct scm *scm_ptr)
 			       __func__);
 			ret = -ENOMEM;
 		}
+#elif defined(CONFIG_THERMAL_FREQ)
+		scm_ptr->therm_fq = thermal_freq_register("omap_ondie_sensor",
+			scm_get_temp, scm_ptr, trip_table,
+			(sizeof trip_table)/(sizeof *trip_table), 4000);
+#endif
 	}
 
 	clk_enable(scm_ptr->fclock);

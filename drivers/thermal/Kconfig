@@ -18,3 +18,11 @@ config THERMAL_HWMON
 	depends on THERMAL
 	depends on HWMON=y || HWMON=THERMAL
 	default y
+
+config THERMAL_FREQ
+	depends on THERMAL && !THERMAL_FRAMEWORK
+	bool "Thermal control via cpufreq"
+	help
+	  This pseudo-driver takes information from the thermal sensor and
+	  uses it to adapt the CPU frequency to a rate which prevents
+	  overheating.

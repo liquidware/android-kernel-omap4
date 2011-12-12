@@ -20,6 +20,9 @@
  *
  */
 
+#ifndef	__OMAP4_SCM_H__
+#define __OMAP4_SCM_H__
+
 /*
  * The register offsets and but fields might change across
  * OMAP versions hence populating them in this structure.
@@ -120,7 +123,11 @@ struct scm {
 	struct device			*dev;
 	struct omap4460plus_temp_sensor_data **ts_data;
 	struct omap4460plus_temp_sensor_registers **registers;
+#if defined(CONFIG_THERMAL_FRAMEWORK)
 	struct thermal_dev		**therm_fw;
+#elif defined(CONFIG_THERMAL)
+	struct thermal_freq		*therm_fq;
+#endif
 	struct clk		*fclock;
 	struct clk		*div_clk;
 	struct temp_sensor_hwmon *tsh_ptr;
@@ -162,3 +169,5 @@ void omap4460plus_scm_set_update_interval(struct scm *scm_ptr,
 						u32 interval, int id);
 int omap4460plus_scm_read_temp(struct scm *scm_ptr, int id);
 int adc_to_temp_conversion(struct scm *scm_ptr, int id, int val);
+
+#endif

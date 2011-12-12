@@ -38,6 +38,7 @@
 #include <linux/reboot.h>
 #include <plat/scm.h>
 #include <linux/mfd/omap4_scm.h>
+#include <linux/thermal_freq.h>
 #include <linux/thermal_framework.h>
 
 u32 omap4plus_scm_readl(struct scm *scm_ptr, u32 reg)
@@ -114,6 +115,7 @@ static irqreturn_t talert_irq_handler(int irq, void *data)
 		temp = omap4plus_scm_readl(scm_ptr, tsr->temp_sensor_ctrl);
 		temp &= tsr->bgap_dtemp_mask;
 
+#if defined(CONFIG_THERMAL_FRAMEWORK)
 		if (t_hot || t_cold) {
 			/* kobject_uvent to user space threshold crossed */
 			scm_ptr->therm_fw[i]->current_temp =
@@ -122,6 +124,9 @@ static irqreturn_t talert_irq_handler(int irq, void *data)
 			kobject_uevent(&scm_ptr->tsh_ptr[i].pdev->dev.kobj,
 						KOBJ_CHANGE);
 		}
+#elif defined(CONFIG_THERMAL)
+		scm_ptr->therm_fq->tdev->last_temperature = temp;
+#endif
 	}
 
 	return IRQ_HANDLED;
