@@ -568,6 +568,7 @@ static void __init omap4_panda_init(void)
 	omap4_ehci_init();
 	usb_musb_init(&musb_board_data);
 	omap4_panda_display_init();
+	omap_enable_smartreflex_on_init();
 }
 
 static void __init omap4_panda_map_io(void)
