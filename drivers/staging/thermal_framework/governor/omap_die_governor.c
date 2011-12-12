@@ -406,7 +406,7 @@ static int omap_process_cpu_temp(struct list_head *cooling_list,
 				struct thermal_dev *temp_sensor,
 				int temp)
 {
-	pr_err("%s: Received temp %i\n", __func__, temp);
+	pr_debug("%s: Received temp %i\n", __func__, temp);
 	omap_gov->temp_sensor = temp_sensor;
 	return omap_cpu_thermal_manager(cooling_list, temp);
 }

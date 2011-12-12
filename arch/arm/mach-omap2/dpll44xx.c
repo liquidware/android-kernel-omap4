@@ -222,8 +222,8 @@ int omap4460_mpu_dpll_set_rate(struct clk *clk, unsigned long rate)
 	if (v & OMAP4460_DCC_EN_MASK)
 		dpll_rate *= 2;
 
-        pr_err("omap4460_mpu_dpll_set_rate: old rate %ld, new rate %ld\n",      
-                                                              dpll_rate, rate); 
+//        pr_err("omap4460_mpu_dpll_set_rate: old rate %ld, new rate %ld\n",      
+//                                                            dpll_rate, rate); 
 
 	if (rate < OMAP_1GHz) {
 		omap4460_dcc(clk, rate);

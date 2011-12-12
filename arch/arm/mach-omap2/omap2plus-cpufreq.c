@@ -282,7 +282,7 @@ void omap_thermal_step_freq_down(void)
 
 	max_thermal = omap_thermal_lower_speed();
 
-	pr_err("%s: temperature too high, starting cpu throttling at max %u\n",
+	pr_info("%s: temperature too high, starting cpu throttling at max %u\n",
 		__func__, max_thermal);
 
 	cur = omap_getspeed(0);
@@ -299,7 +299,7 @@ void omap_thermal_step_freq_up(void)
 	mutex_lock(&omap_cpufreq_lock);
 	max_thermal = max_freq;
 
-	pr_err("%s: temperature reduced, stepping up to %i\n",
+	pr_info("%s: temperature reduced, stepping up to %i\n",
 		__func__, current_target_freq);
 
 	if (current_target_freq) {
@@ -321,11 +321,11 @@ void omap_thermal_step_freq_up(void)
 static int cpufreq_apply_cooling(struct thermal_dev *dev, int cooling_level)
 {
 	if (cooling_level < current_cooling_level) {
-		pr_err("%s: Unthrottle cool level %i curr cool %i\n",
+		pr_info("%s: Unthrottle cool level %i curr cool %i\n",
 		       __func__, cooling_level, current_cooling_level);
 		omap_thermal_step_freq_up();
 	} else if (cooling_level > current_cooling_level) {
-		pr_err("%s: Throttle cool level %i curr cool %i\n",
+		pr_info("%s: Throttle cool level %i curr cool %i\n",
 		       __func__, cooling_level, current_cooling_level);
 		omap_thermal_step_freq_down();
 	}
