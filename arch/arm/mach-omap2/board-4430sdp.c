@@ -383,6 +383,12 @@ static struct platform_device *sdp4430_devices[] __initdata = {
 	&sdp4430_vbat,
 };
 
+static void __init omap_4430sdp_init_early(void)
+{
+	omap2_init_common_infrastructure();
+	omap2_init_common_devices(NULL, NULL);
+}
+
 static struct omap_musb_board_data musb_board_data = {
 	.interface_type		= MUSB_INTERFACE_UTMI,
 	.mode			= MUSB_OTG,
