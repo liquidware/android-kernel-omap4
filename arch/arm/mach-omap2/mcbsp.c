@@ -80,6 +80,8 @@ static int omap2_mcbsp_set_clk_src(struct device *dev, struct clk *clk,
 	else
 		return -EINVAL;
 
+/*mcbsp->pdata->clks_pad_src; ...prcm_src*/
+
 	fck_src = clk_get(dev, fck_src_name);
 	if (IS_ERR_OR_NULL(fck_src)) {
 		pr_err("omap-mcbsp: %s: could not clk_get() %s\n", "clks",
@@ -150,6 +152,9 @@ static int omap_init_mcbsp(struct omap_hwmod *oh, void *unused)
 		pdata->mux_signal = omap2_mcbsp1_mux_rx_clk;
 
 	if (oh->class->rev == MCBSP_CONFIG_TYPE3) {
+		strcpy(pdata->clks_pad_src, "pad_clks_ck");
+		strcpy(pdata->clks_prcm_src, "mcbsp2_sync_mux_ck");
+
 		if (id == 2)
 			/* The FIFO has 1024 + 256 locations */
 			pdata->buffer_size = 0x500;
@@ -157,6 +162,9 @@ static int omap_init_mcbsp(struct omap_hwmod *oh, void *unused)
 			/* The FIFO has 128 locations */
 			pdata->buffer_size = 0x80;
 	} else if (oh->class->rev == MCBSP_CONFIG_TYPE4) {
+		strcpy(pdata->clks_pad_src, "pad_clks_ck");
+		strcpy(pdata->clks_prcm_src, "mcbsp2_sync_mux_ck");
+
 		/* The FIFO has 128 locations for all instances */
 		pdata->buffer_size = 0x80;
 	}

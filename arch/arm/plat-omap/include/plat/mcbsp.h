@@ -304,6 +304,9 @@ struct omap_mcbsp_platform_data {
 	u8 reg_size;
 	u8 reg_step;
 
+	char clks_pad_src[30];
+	char clks_prcm_src[30];
+
 	/* McBSP platform and instance specific features */
 	bool has_wakeup; /* Wakeup capability */
 	bool has_ccr; /* Transceiver has configuration control registers */
