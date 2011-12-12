@@ -1861,9 +1861,10 @@ static struct omap_hwmod_opt_clk gpio1_opt_clks[] = {
 	{ .role = "dbclk", .clk = "gpio1_dbclk" },
 };
 
-static struct omap_hwmod omap44xx_gpio1_hwmod = {
+static struct omap_hwmod omap443x_gpio1_hwmod = {
 	.name		= "gpio1",
 	.class		= &omap44xx_gpio_hwmod_class,
+	.flags          = HWMOD_INIT_NO_RESET,
 	.clkdm_name	= "l4_wkup_clkdm",
 	.flags = HWMOD_CONTROL_OPT_CLKS_IN_RESET,
 	.mpu_irqs	= omap44xx_gpio1_irqs,
@@ -5340,7 +5341,7 @@ static __initdata struct omap_hwmod *omap44xx_hwmods[] = {
 	&omap44xx_dss_venc_hwmod,
 
 	/* gpio class */
-	&omap44xx_gpio1_hwmod,
+	&omap443x_gpio1_hwmod,
 	&omap44xx_gpio2_hwmod,
 	&omap44xx_gpio3_hwmod,
 	&omap44xx_gpio4_hwmod,
