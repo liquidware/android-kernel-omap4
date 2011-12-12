@@ -238,7 +238,7 @@ static struct omap_opp_def __initdata omap446x_opp_def_list[] = {
 	       if (!oh_mpu || !oh_mpu->od) {
 	               goto err;
 	       } else {
-	               pdev = &oh_mpu->od->pdev;
+	               pdev = oh_mpu->od->pdev;
 
 			if (!pdev) {
 				pr_err("omap4_opp_enable: mpu pdev is null\n");
@@ -247,7 +247,7 @@ static struct omap_opp_def __initdata omap446x_opp_def_list[] = {
 
 	               r = opp_enable(&pdev->dev, freq);
 	               if (r < 0) {
-	                       pr_err("opp_enable() failed for mpu@%ld", freq);
+	                       pr_err("opp_enable failed for mpu@%ld\n", freq);
 	                       goto err;
 	               }
 	       }
