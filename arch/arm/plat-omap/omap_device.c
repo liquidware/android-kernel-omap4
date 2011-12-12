@@ -545,7 +545,7 @@ static struct omap_device *omap_device_alloc(struct platform_device *pdev,
 
 	res_count = omap_device_count_resources(od);
 	if (res_count > 0) {
-		dev_err(&pdev->dev, "%s(): resources allocated from hwmod %d\n",
+		dev_dbg(&pdev->dev, "%s(): resources allocated from hwmod %d\n",
 			__func__, res_count);
 		res = kzalloc(sizeof(struct resource) * res_count, GFP_KERNEL);
 		if (!res)

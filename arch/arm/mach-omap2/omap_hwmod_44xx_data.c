@@ -5495,12 +5495,14 @@ static __initdata struct omap_hwmod *omap443x_hwmods[] = {
         /* bandgap class */                                                     
         &omap443x_bandgap_hwmod,                                                
 	&omap443x_gpio1_hwmod,
+	NULL
 };
 
 static __initdata struct omap_hwmod *omap446x_hwmods[] = {
         /* bandgap class */                                                     
         &omap446x_bandgap_hwmod,
 	&omap446x_gpio1_hwmod,
+	NULL
 };
 
 int __init omap44xx_hwmod_init(void)
