@@ -25,6 +25,10 @@
 #include <linux/regulator/fixed.h>
 #include <linux/leds.h>
 #include <linux/leds_pwm.h>
+#include <linux/wl12xx.h>
+#include <linux/netdevice.h>
+#include <linux/if_ether.h>
+#include <linux/ti_wilink_st.h>
 
 #include <mach/hardware.h>
 #include <mach/omap4-common.h>
@@ -220,6 +224,41 @@ static struct omap_board_data keypad_data = {
 	.pads_cnt       	= ARRAY_SIZE(keypad_pads),
 };
 
+static int
+sdp4430_kim_suspend(struct platform_device *pdev, pm_message_t msg)
+{
+	return 0;
+}
+
+static int
+sdp4430_kim_resume(struct platform_device *pdev)
+{
+	return 0;
+}
+
+struct ti_st_plat_data sdp4430_bt_platform_data = {
+        .nshutdown_gpio = 55,
+        .dev_name = "/dev/ttyO1",
+        .flow_cntrl = 1,
+        .baud_rate = 3000000,
+        .suspend = sdp4430_kim_suspend,
+        .resume = sdp4430_kim_resume,
+
+};
+
+static struct platform_device wl128x_device = {
+	.name	= "kim",
+	.id	= -1,
+	.dev	= {
+		.platform_data	= &sdp4430_bt_platform_data,
+	},
+};
+
+static struct platform_device btwilink_device = {
+	.name = "btwilink",
+	.id = -1,
+};
+
 static struct gpio_led sdp4430_gpio_leds[] = {
 	{
 		.name	= "omap4:green:debug0",
@@ -408,6 +447,8 @@ static struct platform_device *sdp4430_devices[] __initdata = {
 	&sdp4430_leds_gpio,
 	&sdp4430_leds_pwm,
 	&sdp4430_vbat,
+	&wl128x_device,
+	&btwilink_device,
 	&omap4_hdmi_audio_device,
 };
 
