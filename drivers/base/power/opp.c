@@ -465,10 +465,13 @@ static int opp_set_availability(struct device *dev, unsigned long freq,
 	struct opp *new_opp, *tmp_opp, *opp = ERR_PTR(-ENODEV);
 	int r = 0;
 
+	if (!dev)
+		return -EINVAL;
+
 	/* keep the node allocated */
 	new_opp = kmalloc(sizeof(struct opp), GFP_KERNEL);
 	if (!new_opp) {
-		dev_warn(dev, "%s: Unable to create OPP\n", __func__);
+		pr_err("%s: Unable to create OPP\n", __func__);
 		return -ENOMEM;
 	}
 
@@ -483,7 +486,7 @@ static int opp_set_availability(struct device *dev, unsigned long freq,
 	}
 	if (IS_ERR(dev_opp)) {
 		r = PTR_ERR(dev_opp);
-		dev_warn(dev, "%s: Device OPP not found (%d)\n", __func__, r);
+		pr_err("%s: Device OPP not found (%d)\n", __func__, r);
 		goto unlock;
 	}
 
@@ -604,6 +607,9 @@ int opp_init_cpufreq_table(struct device *dev,
 	struct opp *opp;
 	struct cpufreq_frequency_table *freq_table;
 	int i = 0;
+
+	if (!dev)
+		return -EINVAL;
 
 	/* Pretend as if I am an updater */
 	mutex_lock(&dev_opp_list_lock);

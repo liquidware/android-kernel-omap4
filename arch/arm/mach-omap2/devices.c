@@ -695,6 +695,25 @@ static int __init omap2_init_devices(void)
 }
 arch_initcall(omap2_init_devices);
 
+
+static int __init omap2_mpu_and_bus_init(void)                                         
+{                                                                               
+        struct omap_hwmod *oh;
+	struct platform_device *pdev;
+
+	oh = omap_hwmod_lookup("mpu");
+	pdev = omap_device_build("mpu", 0, oh, NULL, 0, NULL, 0, 1);
+
+	oh = omap_hwmod_lookup("l3_main_1");
+	omap_device_build("l3_main_1", 0, oh, NULL, 0,NULL, 0, 1);
+
+	oh = omap_hwmod_lookup("iva");
+	omap_device_build("iva", 0, oh, NULL, 0,NULL, 0, 1);
+
+	return 0;
+}                                                                               
+postcore_initcall(omap2_mpu_and_bus_init); 
+
 #if defined(CONFIG_OMAP_WATCHDOG) || defined(CONFIG_OMAP_WATCHDOG_MODULE)
 static int __init omap_init_wdt(void)
 {

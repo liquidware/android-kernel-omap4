@@ -168,6 +168,9 @@ static int __cpuinit omap_cpu_init(struct cpufreq_policy *policy)
 {
 	int result = 0;
 
+	if (!mpu_dev)
+		return -EINVAL;
+
 	mpu_clk = clk_get(NULL, mpu_clk_name);
 	if (IS_ERR(mpu_clk))
 		return PTR_ERR(mpu_clk);
@@ -263,7 +266,7 @@ static int __init omap_cpufreq_init(void)
 
 	mpu_dev = omap_device_get_by_hwmod_name("mpu");
 	if (!mpu_dev) {
-		pr_warning("%s: unable to get the mpu device\n", __func__);
+		pr_err("%s: unable to get the mpu device\n", __func__);
 		return -EINVAL;
 	}
 

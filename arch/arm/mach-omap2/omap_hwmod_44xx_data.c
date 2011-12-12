@@ -31,6 +31,7 @@
 #include <plat/i2c.h>
 #include <plat/dmtimer.h>
 #include <plat/common.h>
+#include <plat/omap_device.h>
 
 #include "omap_hwmod_common_data.h"
 
@@ -5440,4 +5441,3 @@ int __init omap44xx_hwmod_init(void)
 {
 	return omap_hwmod_register(omap44xx_hwmods);
 }
-

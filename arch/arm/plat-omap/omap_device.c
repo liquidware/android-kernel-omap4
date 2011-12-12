@@ -540,12 +540,12 @@ static struct omap_device *omap_device_alloc(struct platform_device *pdev,
 	 * properly populated by DT, stick to hwmod resources only.
 	 */
 	if (pdev->num_resources && pdev->resource)
-		dev_warn(&pdev->dev, "%s(): resources already allocated %d\n",
+		dev_err(&pdev->dev, "%s(): resources already allocated %d\n",
 			__func__, pdev->num_resources);
 
 	res_count = omap_device_count_resources(od);
 	if (res_count > 0) {
-		dev_dbg(&pdev->dev, "%s(): resources allocated from hwmod %d\n",
+		dev_err(&pdev->dev, "%s(): resources allocated from hwmod %d\n",
 			__func__, res_count);
 		res = kzalloc(sizeof(struct resource) * res_count, GFP_KERNEL);
 		if (!res)
@@ -661,6 +661,8 @@ struct platform_device *omap_device_build_ss(const char *pdev_name, int pdev_id,
 	int ret = -ENOMEM;
 	struct platform_device *pdev;
 	struct omap_device *od;
+
+	pr_err("omap_device_build_ss: %s\n", pdev_name);
 
 	if (!ohs || oh_cnt == 0 || !pdev_name)
 		return ERR_PTR(-EINVAL);
