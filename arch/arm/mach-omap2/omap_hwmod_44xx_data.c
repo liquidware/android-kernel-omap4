@@ -5507,13 +5507,13 @@ int __init omap44xx_hwmod_init(void)
 {
 	int ret;
 
-	ret = omap_hwmod_register(omap44xx_hwmods);
-
 	if (cpu_is_omap443x())
 		ret = omap_hwmod_register(omap446x_hwmods);
 
 	if (cpu_is_omap446x())
 		ret = omap_hwmod_register(omap446x_hwmods);
+
+        ret = omap_hwmod_register(omap44xx_hwmods);                             
 
 	return ret;
 }
