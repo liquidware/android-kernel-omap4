@@ -42,6 +42,7 @@
 #include <video/omap-panel-picodlp.h>
 #include <linux/wl12xx.h>
 
+#include "board-blaze.h"
 #include "mux.h"
 #include "control.h"
 #include "hsmmc.h"
@@ -1113,6 +1114,7 @@ static void __init omap_4430sdp_init(void)
 	omap4_audio_conf();
 	omap4_i2c_init();
 	omap_sfh7741prox_init();
+	blaze_touch_init();
 	platform_add_devices(sdp4430_devices, ARRAY_SIZE(sdp4430_devices));
 	board_serial_init();
 	omap_sdrc_init(NULL, NULL);
