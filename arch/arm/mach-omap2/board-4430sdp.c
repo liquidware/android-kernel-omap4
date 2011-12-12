@@ -57,6 +57,11 @@
 #define HDMI_GPIO_HPD 60 /* Hot plug pin for HDMI */
 #define HDMI_GPIO_LS_OE 41 /* Level shifter for HDMI */
 #define DLP_POWER_ON_GPIO	40
+#define LCD_BL_GPIO		27	/* LCD Backlight GPIO */
+/* PWM2 and TOGGLE3 register offsets */
+#define LED_PWM2ON		0x03
+#define LED_PWM2OFF		0x04
+#define TWL6030_TOGGLE3		0x92
 #define DISPLAY_SEL_GPIO	59	/* LCD2/PicoDLP switch */
 
 #define GPIO_WIFI_PMENA		54
@@ -457,6 +462,11 @@ static struct platform_device omap_vwlan_device = {
 	},
 };
 
+static struct regulator_consumer_supply sdp4430_vcxio_supply[] = {
+	REGULATOR_SUPPLY("vdds_dsi", "omapdss_dss"),
+	REGULATOR_SUPPLY("vdds_dsi", "omapdss_dsi1"),
+};
+
 static int omap4_twl6030_hsmmc_late_init(struct device *dev)
 {
 	int ret = 0;
@@ -553,10 +563,25 @@ static struct twl4030_audio_data twl6040_audio = {
 	.irq_base	= TWL6040_CODEC_IRQ_BASE,
 };
 
+static struct regulator_init_data sdp4430_vcxio = {
+	.constraints = {
+		.min_uV			= 1800000,
+		.max_uV			= 1800000,
+		.valid_modes_mask	= REGULATOR_MODE_NORMAL
+					| REGULATOR_MODE_STANDBY,
+		.valid_ops_mask	 = REGULATOR_CHANGE_MODE
+					| REGULATOR_CHANGE_STATUS,
+		.always_on	= true,
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(sdp4430_vcxio_supply),
+	.consumer_supplies	= sdp4430_vcxio_supply,
+};
+
 static struct twl4030_platform_data sdp4430_twldata = {
 	.audio		= &twl6040_audio,
 	/* Regulators */
 	.vusim		= &sdp4430_vusim,
+	.vcxio		= &sdp4430_vcxio,
 	.vaux1		= &sdp4430_vaux1,
 };
 
@@ -604,6 +629,76 @@ static void __init omap_sfh7741prox_init(void)
 		pr_err("%s:failed to request GPIO %d, error %d\n",
 			__func__, OMAP4_SFH7741_ENABLE_GPIO, error);
 }
+
+static int dsi1_panel_set_backlight(struct omap_dss_device *dssdev, int level)
+{
+	int r;
+
+	r = twl_i2c_write_u8(TWL_MODULE_PWM, 0x7F, LED_PWM2OFF);
+	if (r)
+		return r;
+
+	if (level > 1) {
+		if (level == 255)
+			level = 0x7F;
+		else
+			level = (~(level/2)) & 0x7F;
+
+		r = twl_i2c_write_u8(TWL_MODULE_PWM, level, LED_PWM2ON);
+		if (r)
+			return r;
+		r = twl_i2c_write_u8(TWL6030_MODULE_ID1, 0x30, TWL6030_TOGGLE3);
+		if (r)
+			return r;
+	} else if (level <= 1) {
+		r = twl_i2c_write_u8(TWL6030_MODULE_ID1, 0x08, TWL6030_TOGGLE3);
+		if (r)
+			return r;
+		r = twl_i2c_write_u8(TWL6030_MODULE_ID1, 0x28, TWL6030_TOGGLE3);
+		if (r)
+			return r;
+		r = twl_i2c_write_u8(TWL6030_MODULE_ID1, 0x00, TWL6030_TOGGLE3);
+		if (r)
+			return r;
+	}
+
+	return 0;
+}
+
+#if 0
+static void sdp4430_lcd_init(void)
+{
+	u32 reg;
+	int status;
+
+	/* Enable 3 lanes in DSI1 module, disable pull down */
+	reg = omap4_ctrl_pad_readl(OMAP4_CTRL_MODULE_PAD_CORE_CONTROL_DSIPHY);
+	reg &= ~OMAP4_DSI1_LANEENABLE_MASK;
+	reg |= 0x7 << OMAP4_DSI1_LANEENABLE_SHIFT;
+	reg &= ~OMAP4_DSI1_PIPD_MASK;
+	reg |= 0x7 << OMAP4_DSI1_PIPD_SHIFT;
+	omap4_ctrl_pad_writel(reg, OMAP4_CTRL_MODULE_PAD_CORE_CONTROL_DSIPHY);
+
+	/* Panel Taal reset and backlight GPIO init */
+	status = gpio_request_one(dsi1_panel.reset_gpio, GPIOF_DIR_OUT,
+		"lcd_reset_gpio");
+	if (status)
+		pr_err("%s: Could not get lcd_reset_gpio\n", __func__);
+
+	if (dsi1_panel.use_ext_te) {
+		status = omap_mux_init_signal("gpmc_ncs4.gpio_101",
+				OMAP_PIN_INPUT_PULLUP);
+		if (status)
+			pr_err("%s: Could not get ext_te gpio\n", __func__);
+	}
+
+	status = gpio_request_one(LCD_BL_GPIO, GPIOF_DIR_OUT, "lcd_bl_gpio");
+	if (status)
+		pr_err("%s: Could not get lcd_bl_gpio\n", __func__);
+
+	gpio_set_value(LCD_BL_GPIO, 0);
+}
+#endif
 
 static void sdp4430_hdmi_mux_init(void)
 {
@@ -666,6 +761,7 @@ static struct nokia_dsi_panel_data dsi1_panel = {
 		.use_ext_te	= false,
 		.ext_te_gpio	= 101,
 		.esd_interval	= 0,
+/*		.set_backlight	= dsi1_panel_set_backlight,*/
 };
 
 static struct omap_dss_device sdp4430_lcd_device = {
@@ -845,9 +941,6 @@ static struct omap_dss_board_info sdp4430_dss_data = {
 
 static int omap_4430sdp_hack_backlight(void)
 {
-#define LED_PWM2ON		0x03
-#define LED_PWM2OFF		0x04
-#define TWL6030_TOGGLE3		0x92
 	twl_i2c_write_u8(TWL_MODULE_PWM, 0x7f, LED_PWM2OFF);
 	twl_i2c_write_u8(TWL_MODULE_PWM, 0x7f, LED_PWM2ON);
 	twl_i2c_write_u8(TWL6030_MODULE_ID1, 0x30, TWL6030_TOGGLE3);
