@@ -410,7 +410,7 @@ static int omap_cpu_thermal_manager(struct list_head *cooling_list, int temp)
 	int cpu_temp;
 
 	cpu_temp = convert_omap_sensor_temp_to_hotspot_temp(temp);
-#if 1
+#if 0
 	pr_info("%s: triggered with these temp: temp %d cpu_temp %d\n",
 						__func__, temp, cpu_temp);
 #endif
@@ -499,6 +499,7 @@ static int __init omap_die_governor_init(void)
 
 static void __exit omap_die_governor_exit(void)
 {
+	thermal_governor_dev_unregister(therm_fw);
 	kfree(therm_fw);
 	kfree(omap_gov);
 }

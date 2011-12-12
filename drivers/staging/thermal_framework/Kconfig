@@ -11,6 +11,7 @@ menuconfig THERMAL_FRAMEWORK
 
 config OMAP_THERMAL
 	bool "OMAP Thermal Framework support"
+	depends on THERMAL_FRAMEWORK && ARCH_OMAP4
 	help
 	  This is the thermal framework support for OMAP4
 	  processors.
