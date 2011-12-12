@@ -662,7 +662,7 @@ struct platform_device *omap_device_build_ss(const char *pdev_name, int pdev_id,
 	struct platform_device *pdev;
 	struct omap_device *od;
 
-	pr_err("omap_device_build_ss: %s\n", pdev_name);
+	pr_debug("omap_device_build_ss: %s\n", pdev_name);
 
 	if (!ohs || oh_cnt == 0 || !pdev_name)
 		return ERR_PTR(-EINVAL);
