@@ -56,8 +56,8 @@
 #define OMAP4_SFH7741_ENABLE_GPIO		188
 #define HDMI_GPIO_HPD 60 /* Hot plug pin for HDMI */
 #define HDMI_GPIO_LS_OE 41 /* Level shifter for HDMI */
-#define DISPLAY_SEL_GPIO	59	/* LCD2/PicoDLP switch */
 #define DLP_POWER_ON_GPIO	40
+#define DISPLAY_SEL_GPIO	59	/* LCD2/PicoDLP switch */
 
 #define GPIO_WIFI_PMENA		54
 #define GPIO_WIFI_IRQ		53
