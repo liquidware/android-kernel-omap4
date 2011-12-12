@@ -8,4 +8,5 @@ panda-wlan
 panda-bt
 panda-cpuidle
 panda-smartreflex
+panda-dvfs
 
