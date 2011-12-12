@@ -226,7 +226,13 @@ static struct omap_opp_def __initdata omap446x_opp_def_list[] = {
 	/* IVA OPP5 - OPP-Nitro SpeedBin*/
 	OPP_INITIALIZER("iva", "dpll_iva_m5x2_ck", "iva", false, 500000000, OMAP4460_VDD_IVA_OPPNITRO_UV),
 
-	/* TODO: add DSP, aess, fdif, gpu */
+ 	/* ABE OPP1 - OPP50 */
+        OPP_INITIALIZER("aess", "dpll_abe_x2_ck", "iva", true, 98304000, OMAP4460_VDD_IVA_OPP50_UV),
+        /* ABE OPP2 - OPP100 */                                                 
+//        OPP_INITIALIZER("aess", "dpll_abe_x2_ck", "iva", true, 196608000, OMAP4460_VDD_IVA_OPP100_UV),
+
+	/* TODO: add DSP, fdif, gpu */
+
 };
 
 	/**
