@@ -5524,9 +5524,6 @@ static __initdata struct omap_hwmod *omap44xx_hwmods[] = {
 	&omap44xx_timer10_hwmod,
 	&omap44xx_timer11_hwmod,
 
-	/* scm hwmod */
-	&omap44xx_ctrl_module_core_hwmod,
-
 	/* uart class */
 	&omap44xx_uart1_hwmod,
 	&omap44xx_uart2_hwmod,
