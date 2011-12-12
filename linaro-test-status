@@ -12,4 +12,6 @@ panda-dvfs
 panda-4460
 panda-thermal_framework
 panda-thermal_zone
+panda-onboard-audio-play
+panda-onboard-audio-record
 
