@@ -42,8 +42,7 @@ static int scm_dev_init(struct omap_hwmod *oh, void *user)
 	scm_pdata =
 	    kzalloc(sizeof(*scm_pdata), GFP_KERNEL);
 	if (!scm_pdata) {
-		dev_err(&oh->od->pdev.dev,
-			"Unable to allocate memory for scm pdata\n");
+		pr_err("Unable to allocate memory for scm pdata\n");
 		return -ENOMEM;
 	}
 
@@ -63,8 +62,7 @@ static int scm_dev_init(struct omap_hwmod *oh, void *user)
 		oh, scm_pdata, sizeof(*scm_pdata), NULL, 0, false);
 
 	if (IS_ERR(od)) {
-		dev_warn(&oh->od->pdev.dev,
-			"Could not build omap_device for %s\n", oh->name);
+		pr_warn("Could not build omap_device for %s\n", oh->name);
 		ret = PTR_ERR(od);
 	}
 
