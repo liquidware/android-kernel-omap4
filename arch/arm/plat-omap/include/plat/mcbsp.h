@@ -342,6 +342,8 @@ struct omap_mcbsp {
 	struct omap_mcbsp_platform_data *pdata;
 	struct clk *fclk;
 	struct omap_mcbsp_st_data *st_data;
+#endif
+#if defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_OMAP4)
 	int dma_op_mode;
 	u16 max_tx_thres;
 	u16 max_rx_thres;

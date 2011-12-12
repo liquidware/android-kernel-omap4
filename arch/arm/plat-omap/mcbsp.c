@@ -75,11 +75,6 @@ static int omap_mcbsp_st_read(struct omap_mcbsp *mcbsp, u16 reg)
 #define MCBSP_READ_CACHE(mcbsp, reg) \
 		omap_mcbsp_read(mcbsp, OMAP_MCBSP_REG_##reg, 1)
 
-#define MCBSP_ST_READ(mcbsp, reg) \
-			omap_mcbsp_st_read(mcbsp, OMAP_ST_REG_##reg)
-#define MCBSP_ST_WRITE(mcbsp, reg, val) \
-			omap_mcbsp_st_write(mcbsp, OMAP_ST_REG_##reg, val)
-
 static void omap_mcbsp_dump_reg(u8 id)
 {
 	struct omap_mcbsp *mcbsp = id_to_mcbsp_ptr(id);
@@ -481,7 +476,12 @@ int omap_st_is_enabled(unsigned int id)
 	return st_data->enabled;
 }
 EXPORT_SYMBOL(omap_st_is_enabled);
+#else
+static inline void omap_st_start(struct omap_mcbsp *mcbsp) {}
+static inline void omap_st_stop(struct omap_mcbsp *mcbsp) {}
+#endif
 
+#if defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_OMAP4)
 /*
  * omap_mcbsp_set_rx_threshold configures the transmit threshold in words.
  * The threshold parameter is 1 based, and it is converted (threshold - 1)
@@ -1059,6 +1059,29 @@ static const struct attribute_group additional_attr_group = {
 	.attrs = (struct attribute **)additional_attrs,
 };
 
+static const struct attribute *additional_attrs[] = {
+	&dev_attr_max_tx_thres.attr,
+	&dev_attr_max_rx_thres.attr,
+	&dev_attr_dma_op_mode.attr,
+	NULL,
+};
+
+static const struct attribute_group additional_attr_group = {
+	.attrs = (struct attribute **)additional_attrs,
+};
+
+static inline int __devinit omap_additional_add(struct device *dev)
+{
+	return sysfs_create_group(&dev->kobj, &additional_attr_group);
+}
+
+static inline void __devexit omap_additional_remove(struct device *dev)
+{
+	sysfs_remove_group(&dev->kobj, &additional_attr_group);
+}
+#endif
+
+#ifdef CONFIG_ARCH_OMAP3
 static ssize_t st_taps_show(struct device *dev,
 			    struct device_attribute *attr, char *buf)
 {
