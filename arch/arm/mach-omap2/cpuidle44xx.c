@@ -185,8 +185,6 @@ int __init omap4_idle_init(void)
 	if ((!mpu_pd) || (!cpu0_pd) || (!cpu1_pd))
 		return -ENODEV;
 
-	cpuidle_register_driver(&omap4_idle_driver);
-
 	dev = &per_cpu(omap4_idle_dev, cpu_id);
 	dev->cpu = cpu_id;
 
@@ -209,7 +207,11 @@ int __init omap4_idle_init(void)
 	cx->mpu_state = PWRDM_POWER_RET;
 	cx->mpu_logic_state = PWRDM_POWER_OFF;
 
+	drv->state_count = OMAP4_NUM_STATES;
 	dev->state_count = OMAP4_NUM_STATES;
+
+	cpuidle_register_driver(&omap4_idle_driver);
+
 	if (cpuidle_register_device(dev)) {
 		pr_err("%s: CPUidle register device failed\n", __func__);
 		return -EIO;
