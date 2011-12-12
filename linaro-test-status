@@ -6,4 +6,6 @@ panda-ehci-host
 panda-musb
 panda-wlan
 panda-bt
+panda-cpuidle
+panda-smartreflex
 
