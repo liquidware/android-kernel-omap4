@@ -859,7 +859,7 @@ static struct omap_hwmod omap446x_bandgap_hwmod = {
 	.class		= &omap44xx_bandgap_hwmod_class,
 	.prcm		= {
 		.omap4 = {
-			.clkctrl_reg = OMAP4430_CM_WKUP_BANDGAP_CLKCTRL,
+			.clkctrl_offs = OMAP4_CM_WKUP_BANDGAP_CLKCTRL_OFFSET,
 		},
 	},
 	.opt_clks	= bandgap446x_opt_clks,
@@ -1880,7 +1880,6 @@ static struct omap_hwmod_opt_clk gpio1_opt_clks[] = {
 static struct omap_hwmod omap443x_gpio1_hwmod = {
 	.name		= "gpio1",
 	.class		= &omap44xx_gpio_hwmod_class,
-	.flags          = HWMOD_INIT_NO_RESET,
 	.clkdm_name	= "l4_wkup_clkdm",
 	.flags = HWMOD_CONTROL_OPT_CLKS_IN_RESET,
 	.mpu_irqs	= omap44xx_gpio1_irqs,
@@ -1890,6 +1889,25 @@ static struct omap_hwmod omap443x_gpio1_hwmod = {
 			.clkctrl_offs = OMAP4_CM_WKUP_GPIO1_CLKCTRL_OFFSET,
 			.context_offs = OMAP4_RM_WKUP_GPIO1_CONTEXT_OFFSET,
 			.modulemode   = MODULEMODE_HWCTRL,
+		},
+	},
+	.opt_clks	= gpio1_opt_clks,
+	.opt_clks_cnt	= ARRAY_SIZE(gpio1_opt_clks),
+	.dev_attr	= &gpio_dev_attr,
+	.slaves		= omap44xx_gpio1_slaves,
+	.slaves_cnt	= ARRAY_SIZE(omap44xx_gpio1_slaves),
+};
+
+static struct omap_hwmod omap446x_gpio1_hwmod = {
+	.name		= "gpio1",
+	.class		= &omap44xx_gpio_hwmod_class,
+	.flags          = HWMOD_INIT_NO_RESET,
+	.clkdm_name     = "l4_wkup_clkdm", 
+	.mpu_irqs	= omap44xx_gpio1_irqs,
+	.main_clk	= "gpio1_ick",
+	.prcm = {
+		.omap4 = {
+			.clkctrl_offs = OMAP4_CM_WKUP_GPIO1_CLKCTRL_OFFSET,
 		},
 	},
 	.opt_clks	= gpio1_opt_clks,
@@ -5354,7 +5372,6 @@ static __initdata struct omap_hwmod *omap44xx_hwmods[] = {
 	&omap44xx_dss_venc_hwmod,
 
 	/* gpio class */
-	&omap443x_gpio1_hwmod,
 	&omap44xx_gpio2_hwmod,
 	&omap44xx_gpio3_hwmod,
 	&omap44xx_gpio4_hwmod,
@@ -5454,11 +5471,13 @@ static __initdata struct omap_hwmod *omap44xx_hwmods[] = {
 static __initdata struct omap_hwmod *omap443x_hwmods[] = { 
         /* bandgap class */                                                     
         &omap443x_bandgap_hwmod,                                                
+	omap4463x_gpio1_hwmod,
 };
 
 static __initdata struct omap_hwmod *omap446x_hwmods[] = {
         /* bandgap class */                                                     
         &omap446x_bandgap_hwmod,
+	omap446x_gpio1_hwmod,
 };
 
 int __init omap44xx_hwmod_init(void)

@@ -441,6 +441,7 @@ static struct clockdomain *clockdomains_omap44xx[] __initdata = {
 	&l4_wkup_44xx_clkdm,
 	&emu_sys_44xx_clkdm,
 	&l3_dma_44xx_clkdm,
+	&l3_d2d_44xx_clkdm,
 	NULL
 };
 
