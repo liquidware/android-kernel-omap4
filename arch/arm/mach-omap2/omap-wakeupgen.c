@@ -385,7 +385,6 @@ int __init omap_wakeupgen_init(void)
 	gic_arch_extn.irq_mask = wakeupgen_mask;
 	gic_arch_extn.irq_unmask = wakeupgen_unmask;
 	gic_arch_extn.irq_set_wake = wakeupgen_set_wake;
-	gic_arch_extn.flags = IRQCHIP_MASK_ON_SUSPEND;
 
 	/*
 	 * FIXME: Add support to set_smp_affinity() once the core
