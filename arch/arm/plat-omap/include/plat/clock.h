@@ -102,6 +102,21 @@ struct clksel {
 };
 
 /**
+ * struct dpll_rate_list - optional list of frequency translations
+ * @m: dpll multiplier value
+ * @n: dpll divisor value
+ * @target_rate: desired clock frequency
+ * @actual_frequency: rate caluclated from best multiplier/divisor combination
+ */
+struct dpll_rate_list {
+	int m;
+	int n;
+	unsigned long target_rate;
+	unsigned long actual_rate;
+	struct dpll_rate_list *next;
+};
+
+/**
  * struct dpll_data - DPLL registers and integration data
  * @mult_div1_reg: register containing the DPLL M and N bitfields
  * @mult_mask: mask of the DPLL M bitfield in @mult_div1_reg
@@ -158,6 +173,7 @@ struct dpll_data {
 #if defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_OMAP4)
 	void __iomem		*autoidle_reg;
 	void __iomem		*idlest_reg;
+	struct dpll_rate_list	*rate_cache;
 	u32			autoidle_mask;
 	u32			freqsel_mask;
 	u32			idlest_mask;
