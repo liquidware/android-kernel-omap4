@@ -75,6 +75,34 @@ static struct clkdm_dep ivahd_wkup_sleep_deps[] = {
 	{ NULL },
 };
 
+static struct clkdm_dep l3_d2d_wkup_sleep_deps[] = {
+        {
+                .clkdm_name      = "abe_clkdm",
+        },
+        {
+                .clkdm_name      = "ivahd_clkdm",
+        },
+        {
+                .clkdm_name      = "l3_1_clkdm",
+        },
+        {
+                .clkdm_name      = "l3_2_clkdm",
+        },
+        {
+                .clkdm_name      = "l3_emif_clkdm",
+        },
+        {
+                .clkdm_name      = "l3_init_clkdm",
+        },
+        {
+                .clkdm_name      = "l4_cfg_clkdm",
+        },
+        {
+                .clkdm_name      = "l4_per_clkdm",
+        },
+        { NULL },
+};
+
 static struct clkdm_dep l3_dma_wkup_sleep_deps[] = {
 	{ .clkdm_name = "abe_clkdm" },
 	{ .clkdm_name = "ducati_clkdm" },
