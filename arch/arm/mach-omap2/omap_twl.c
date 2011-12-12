@@ -271,31 +271,41 @@ static int __init twl_set_sr(struct voltagedomain *voltdm)
 	return r;
 }
 
+static struct omap_revisions rev_list_3430[] = { 
+	{ OMAP343X_CLASS, OMAP_REVISION_MASK_REV },
+	{ 0, 0 }
+};
+static struct omap_revisions rev_list_44xx[] = { 
+	{ OMAP443X_CLASS, OMAP_REVISION_MASK_REV },
+	{ OMAP446X_CLASS, OMAP_REVISION_MASK_REV},
+	{ 0, 0 }
+};
+
 static __initdata struct omap_pmic_map omap_twl_map[] = {
 	{
 		.name = "mpu",
-		.omap_chip = OMAP_CHIP_INIT(CHIP_IS_OMAP3430),
+		.omap_revs = rev_list_3430,
 		.pmic_data = &omap3_mpu_pmic,
 		.special_action = twl_set_sr,
 	},
 	{
 		.name = "core",
-		.omap_chip = OMAP_CHIP_INIT(CHIP_IS_OMAP3430),
+		.omap_revs = rev_list_3430,
 		.pmic_data = &omap3_core_pmic,
 	},
 	{
 		.name = "mpu",
-		.omap_chip = OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+		.omap_revs = rev_list_44xx,
 		.pmic_data = &omap4_mpu_pmic,
 	},
 	{
 		.name = "core",
-		.omap_chip = OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+		.omap_revs = rev_list_44xx,
 		.pmic_data = &omap443x_core_pmic,
 	},
 	{
 		.name = "iva",
-		.omap_chip = OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+		.omap_revs = rev_list_44xx,
 		.pmic_data = &omap4_iva_pmic,
 	},
 	/* Terminator */

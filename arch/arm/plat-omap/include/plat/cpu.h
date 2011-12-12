@@ -453,4 +453,14 @@ OMAP4_HAS_FEATURE(mpu_1ghz, MPU_1GHZ)
 OMAP4_HAS_FEATURE(mpu_1_2ghz, MPU_1_2GHZ)
 OMAP4_HAS_FEATURE(mpu_1_5ghz, MPU_1_5GHZ)
 
+#define OMAP_REVISION_MASK_NONE 0
+#define OMAP_REVISION_MASK_REV 1
+
+struct omap_revisions {
+	unsigned int revs;
+	u8 mask;
+};
+
+int omap_are_we_running_on(struct omap_revisions * o_r);
+
 #endif

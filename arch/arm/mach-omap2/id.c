@@ -509,3 +509,25 @@ void __init omap2_set_globals_tap(struct omap_globals *omap2_globals)
 	else
 		tap_prod_id = 0x0208;
 }
+
+
+int omap_are_we_running_on(struct omap_revisions *omap_revs)
+{
+	while (1) {
+		if (!omap_revs->revs)
+			return 0;
+		switch (omap_revs->mask) {
+		case OMAP_REVISION_MASK_NONE: 
+			if (omap_revision == omap_revs->revs)
+				return 1;
+			break;
+		case OMAP_REVISION_MASK_REV:
+			if ((omap_revision & ~(0xff << 8)) == omap_revs->revs)
+				return 1;
+			break;
+		}
+		omap_revs++; 
+	}
+}
+EXPORT_SYMBOL_GPL(omap_are_we_running_on);
+

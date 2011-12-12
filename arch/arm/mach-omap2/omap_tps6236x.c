@@ -262,10 +262,15 @@ out:
 	return ret;
 }
 
+static __initdata struct omap_revisions tps_omap_revs[] = {
+	{ OMAP446X_CLASS, OMAP_REVISION_MASK_REV },
+	{ 0, 0 }, 
+};
+
 static __initdata struct omap_pmic_map omap_tps_map[] = {
 	{
 		.name = "mpu",
-		.omap_chip = OMAP_CHIP_INIT(CHIP_IS_OMAP4460ES1_0),
+		.omap_revs = tps_omap_revs,
 		.pmic_data = &omap4_mpu_pmic,
 		.special_action = omap4_twl_tps62361_enable,
 	},

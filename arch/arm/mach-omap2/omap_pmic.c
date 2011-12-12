@@ -41,7 +41,8 @@ int __init omap_pmic_register_data(struct omap_pmic_map *omap_pmic_maps)
 	map = omap_pmic_maps;
 
 	while(map->name) {
-		if (!omap_chip_is(map->omap_chip))
+
+		if (!omap_are_we_running_on(map->omap_revs))
 			goto next;
 
 		voltdm = voltdm_lookup(map->name);

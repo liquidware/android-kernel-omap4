@@ -134,7 +134,7 @@ static inline void omap_enable_smartreflex_on_init(void) {}
 struct omap_pmic_map {
 	char			*name;
 	struct omap_voltdm_pmic	*pmic_data;
-	struct omap_chip_id	omap_chip;
+	struct omap_revisions	*omap_revs;
 	int			(*special_action)(struct voltagedomain *);
 };
 
