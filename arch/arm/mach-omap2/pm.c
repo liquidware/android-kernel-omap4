@@ -237,7 +237,6 @@ static int __init omap2_common_pm_late_init(void)
 	omap_init_all_pmic();
 
 	/* Init the voltage layer */
-	omap_pmic_late_init();
 	omap_voltage_late_init();
 
 	/* Initialize the voltages */
