@@ -46,6 +46,7 @@
 #include "control.h"
 #include "mux.h"
 #include "common-board-devices.h"
+#include "pm.h"
 
 #define GPIO_HUB_POWER		1
 #define GPIO_HUB_NRESET		62

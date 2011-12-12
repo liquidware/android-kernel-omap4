@@ -78,8 +78,6 @@ static int omap4_enter_idle(struct cpuidle_device *dev,
 	 * This is necessary to honour hardware recommondation
 	 * of triggeing all the possible low power modes once CPU1 is
 	 * out of coherency and in OFF mode.
-	 * Update dev->last_state so that governor stats reflects right
-	 * data.
 	 */
 	cpu1_state = pwrdm_read_pwrst(cpu1_pd);
 	if (cpu1_state != PWRDM_POWER_OFF) {

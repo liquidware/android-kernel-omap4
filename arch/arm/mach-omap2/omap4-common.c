@@ -16,6 +16,7 @@
 #include <linux/io.h>
 #include <linux/platform_device.h>
 #include <linux/memblock.h>
+#include <linux/module.h>
 
 #include <asm/hardware/gic.h>
 #include <asm/hardware/cache-l2x0.h>
@@ -47,6 +48,7 @@ static void omap_bus_sync_noop(void)
 struct omap_bus_post_fns omap_bus_post = {
 	.sync = omap_bus_sync_noop,
 };
+
 EXPORT_SYMBOL(omap_bus_post);
 
 unsigned long omap_get_dram_barrier_base(void)
