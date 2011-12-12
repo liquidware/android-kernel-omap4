@@ -614,6 +614,9 @@ static void __init omap4_panda_init(void)
 		pr_err("error setting wl12xx data\n");
 
 	omap4_panda_i2c_init();
+
+        omap_enable_smartreflex_on_init();
+
 	platform_add_devices(panda_devices, ARRAY_SIZE(panda_devices));
 	panda_leds_init();
 	platform_device_register(&omap_vwlan_device);
@@ -631,8 +634,6 @@ static void __init omap4_panda_init(void)
 		if (status)
 			pr_err("TPS62361 initialization failed: %d\n", status);
 	}
-
-	omap_enable_smartreflex_on_init();
 }
 
 static void __init omap4_panda_map_io(void)
@@ -650,7 +651,7 @@ MACHINE_START(OMAP4_PANDA, "OMAP4 Panda board")
 	/* Maintainer: David Anders - Texas Instruments Inc */
 	.atag_offset	= 0x100,
 	.reserve	= omap_reserve,
-	.map_io		= omap4_map_io,
+	.map_io		= omap4_panda_map_io,
 	.init_early	= omap4430_init_early,
 	.init_irq	= gic_init_irq,
 	.init_machine	= omap4_panda_init,
