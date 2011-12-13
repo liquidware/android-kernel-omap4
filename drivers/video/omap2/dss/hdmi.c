@@ -477,7 +477,7 @@ int omapdss_hdmi_read_edid(struct omap_dss_device *dssdev, u8 *buf, int len)
 	hdmi_runtime_put();
 	mutex_unlock(&hdmi.lock);
 
-	return r;
+	return r == 0;
 }
 
 bool omapdss_hdmi_detect(struct omap_dss_device *dssdev)
