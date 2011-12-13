@@ -834,7 +834,7 @@ static int omapdss_hdmihw_remove(struct platform_device *pdev)
 
 static int hdmi_runtime_suspend(struct device *dev)
 {
-	clk_disable(hdmi.sys_clk);
+//	clk_disable(hdmi.sys_clk);
 
 	dispc_runtime_put();
 	dss_runtime_put();
@@ -855,7 +855,7 @@ static int hdmi_runtime_resume(struct device *dev)
 		goto err_get_dispc;
 
 
-	clk_enable(hdmi.sys_clk);
+//	clk_enable(hdmi.sys_clk);
 
 	return 0;
 

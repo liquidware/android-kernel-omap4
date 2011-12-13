@@ -714,7 +714,10 @@ int dss_runtime_get(void)
 	DSSDBG("dss_runtime_get\n");
 
 	r = pm_runtime_get_sync(&dss.pdev->dev);
-	WARN_ON(r < 0);
+	if (r < 0) {
+		pr_err("dss_runtime_get: failed %d\n", r);
+		WARN_ON(1);
+	}
 	return r < 0 ? r : 0;
 }
 
