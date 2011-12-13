@@ -132,9 +132,15 @@ static void __init panda_leds_init(void)
 	platform_device_register(&leds_gpio);
 }
 
+static struct platform_device omap4panda_hdmi_audio_device = {
+	.name	= "hdmi-audio-dai",
+	.id	= -1,
+};
+
 static struct platform_device *panda_devices[] __initdata = {
 	&wl1271_device,
 	&btwilink_device,
+	&omap4panda_hdmi_audio_device,
 };
 
 static const struct usbhs_omap_board_data usbhs_bdata __initconst = {
