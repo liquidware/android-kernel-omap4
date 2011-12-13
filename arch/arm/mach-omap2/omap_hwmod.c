@@ -1504,9 +1504,9 @@ static int _enable(struct omap_hwmod *oh)
 		}
 	} else {
 		_disable_clocks(oh);
-		pr_debug("omap_hwmod: %s: _wait_target_ready: %d\n",
+		pr_err("omap_hwmod: %s: _wait_target_ready: %d\n",
 			 oh->name, r);
-
+		WARN_ON(1);
 		if (oh->clkdm)
 			clkdm_hwmod_disable(oh->clkdm, oh);
 	}
