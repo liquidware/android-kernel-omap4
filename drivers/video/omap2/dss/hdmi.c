@@ -290,6 +290,7 @@ static void hdmi_compute_pll(struct omap_dss_device *dssdev, int phy,
 		pi->regn = dssdev->clocks.hdmi.regn;
 
 	refclk = clkin / pi->regn;
+//	refclk = clkin / (pi->regn + 1);
 
 	/*
 	 * multiplier is pixel_clk/ref_clk
