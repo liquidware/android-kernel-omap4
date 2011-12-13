@@ -29,6 +29,8 @@
 #include <linux/string.h>
 #include <linux/seq_file.h>
 
+#include <plat/omap_hwmod.h>
+
 #include "ti_hdmi_4xxx_ip.h"
 #include "dss.h"
 
@@ -1213,6 +1215,7 @@ int hdmi_4xxx_audio_trigger(struct hdmi_ip_data *ip_data,
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		omap_hwmod_set_slave_idlemode(ip_data->oh, HWMOD_IDLEMODE_NO);
 		REG_FLD_MOD(hdmi_av_base(ip_data),
 					HDMI_CORE_AV_AUD_MODE, 1, 0, 0);
 		REG_FLD_MOD(hdmi_wp_base(ip_data),
@@ -1230,6 +1233,8 @@ int hdmi_4xxx_audio_trigger(struct hdmi_ip_data *ip_data,
 					HDMI_WP_AUDIO_CTRL, 0, 30, 30);
 		REG_FLD_MOD(hdmi_wp_base(ip_data),
 					HDMI_WP_AUDIO_CTRL, 0, 31, 31);
+		omap_hwmod_set_slave_idlemode(ip_data->oh,
+						    HWMOD_IDLEMODE_SMART_WKUP);
 		break;
 	default:
 		err = -EINVAL;

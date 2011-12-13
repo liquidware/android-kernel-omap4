@@ -40,6 +40,8 @@
 #include "ti_hdmi_4xxx_ip.h"
 #endif
 
+#include <plat/omap_hwmod.h>
+
 #include "ti_hdmi.h"
 #include "dss.h"
 #include "dss_features.h"
@@ -70,7 +72,6 @@ static struct {
 	struct hdmi_ip_data ip_data;
 	int code;
 	int mode;
-
 	struct clk *sys_clk;
 } hdmi;
 
@@ -798,6 +799,13 @@ static int omapdss_hdmihw_probe(struct platform_device *pdev)
 	if (r) {
 		DSSERR("can't register ASoC HDMI audio codec\n");
 		return r;
+	}
+
+	hdmi.ip_data.oh = omap_hwmod_lookup("dss_hdmi");
+
+	if (!hdmi.ip_data.oh) {
+		dev_err(&pdev->dev, "Cannot find omap_hwmod for hdmi\n");
+		return -ENODEV;
 	}
 #endif
 	return 0;

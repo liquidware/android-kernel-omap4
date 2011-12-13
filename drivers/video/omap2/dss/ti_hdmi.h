@@ -121,6 +121,10 @@ struct hdmi_ip_data {
 	const struct ti_hdmi_ip_ops *ops;
 	struct hdmi_config cfg;
 	struct hdmi_pll_info pll_data;
+#if defined(CONFIG_SND_OMAP_SOC_OMAP4_HDMI) || \
+        defined(CONFIG_SND_OMAP_SOC_OMAP4_HDMI_MODULE)
+        struct omap_hwmod *oh;
+#endif
 };
 int ti_hdmi_4xxx_phy_enable(struct hdmi_ip_data *ip_data);
 void ti_hdmi_4xxx_phy_disable(struct hdmi_ip_data *ip_data);
