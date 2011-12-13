@@ -1204,7 +1204,7 @@ int hdmi_config_audio_acr(struct hdmi_ip_data *ip_data,
 	return 0;
 }
 
-int hdmi_audio_trigger(struct hdmi_ip_data *ip_data,
+int hdmi_4xxx_audio_trigger(struct hdmi_ip_data *ip_data,
 				struct snd_pcm_substream *substream, int cmd,
 				struct snd_soc_dai *dai)
 {
