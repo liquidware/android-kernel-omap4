@@ -1639,7 +1639,7 @@ static int syn_flash_write_block_cmd_fast(struct syn *sd, const u8 *data,
 	const u16 block_size = sd->flash_caps.block_size;
 	u8 *d;
 	u16 block;
-	int r;
+	int r = 0;
 
 	d = kmalloc(block_size + 3, GFP_KERNEL);
 	if (d == NULL)

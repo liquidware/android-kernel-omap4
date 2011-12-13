@@ -490,7 +490,6 @@ int thermal_sensor_dev_register(struct thermal_dev *tdev)
 	}
 	mutex_unlock(&thermal_domain_list_lock);
 
-init_sensor:
 	therm_dom = kzalloc(sizeof(struct thermal_domain),
 		GFP_KERNEL);
 	if (!therm_dom) {
@@ -506,6 +505,7 @@ init_sensor:
 out:
 	mutex_unlock(&thermal_domain_list_lock);
 	thermal_init_thermal_state(tdev);
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(thermal_sensor_dev_register);

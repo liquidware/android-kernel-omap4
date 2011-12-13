@@ -27,6 +27,7 @@
 #include <linux/io.h>
 #include <linux/bitops.h>
 #include <linux/clkdev.h>
+#include <linux/err.h> 
 
 #include <plat/cpu.h>
 #include <plat/clock.h>
@@ -545,10 +546,19 @@ void omap3_dpll_allow_idle(struct clk *clk)
 	const struct dpll_data *dd;
 	u32 v;
 
-	if (!clk || !clk->dpll_data)
+	if (!clk || IS_ERR(clk)) {
+		pr_err("clock %s not found\n", clk->name);
 		return;
+	}
 
 	dd = clk->dpll_data;
+	if (!dd)
+		return;
+
+	if (!dd->autoidle_reg) {
+		pr_err("clock %s lacks autoidle_reg\n", clk->name);
+		return;
+	}
 
 	/*
 	 * REVISIT: CORE DPLL can optionally enter low-power bypass
