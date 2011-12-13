@@ -45,7 +45,7 @@ static int commit(struct drm_crtc *crtc)
 	DBG("%s", omap_crtc->ovl->name);
 	DBG("%dx%d -> %dx%d (%d)", info->width, info->height, info->out_width,
 			info->out_height, info->screen_width);
-	DBG("%d,%d %p %08x", info->pos_x, info->pos_y, info->vaddr,
+	DBG("%d,%d  %08x", info->pos_x, info->pos_y,
 			info->paddr);
 
 	/* NOTE: do we want to do this at all here, or just wait
@@ -100,7 +100,6 @@ static void update_scanout(struct drm_crtc *crtc)
 			crtc->x, crtc->y, vaddr, paddr, screen_width);
 
 	omap_crtc->info.paddr = paddr;
-	omap_crtc->info.vaddr = vaddr;
 	omap_crtc->info.screen_width = screen_width;
 }
 
