@@ -381,6 +381,7 @@ static void omap_init_audio(void)
 	struct omap_hwmod *oh_hdmi;
 	struct omap_device *od_hdmi;
 	char *oh_hdmi_name = "dss_hdmi";
+#if 0
 	char *dev_hdmi_name = "hdmi-audio-dai";
 
 	if (cpu_is_omap44xx()) {
@@ -395,7 +396,7 @@ static void omap_init_audio(void)
 
 		platform_device_register(&omap_hdmi_audio);
 	}
-
+#endif
 	platform_device_register(&omap_mcbsp1);
 	platform_device_register(&omap_mcbsp2);
 	if (cpu_is_omap243x() || cpu_is_omap34xx() || cpu_is_omap44xx()) {
