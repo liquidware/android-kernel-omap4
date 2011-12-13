@@ -365,7 +365,7 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 
 	r = hdmi.ip_data.ops->phy_enable(&hdmi.ip_data);
 	if (r) {
-		DSSDBG("Failed to start PHY\n");
+		pr_err("Failed to start PHY\n");
 		goto err;
 	}
 
@@ -500,6 +500,9 @@ int omapdss_hdmi_display_enable(struct omap_dss_device *dssdev)
 
 	DSSDBG("ENTER hdmi_display_enable\n");
 
+	r = hdmi_runtime_get();                                                 
+        BUG_ON(r);
+
 	mutex_lock(&hdmi.lock);
 
 	if (dssdev->manager == NULL) {
@@ -538,6 +541,8 @@ err1:
 	omap_dss_stop_device(dssdev);
 err0:
 	mutex_unlock(&hdmi.lock);
+	hdmi_runtime_put();
+
 	return r;
 }
 
@@ -834,7 +839,7 @@ static int omapdss_hdmihw_remove(struct platform_device *pdev)
 
 static int hdmi_runtime_suspend(struct device *dev)
 {
-//	clk_disable(hdmi.sys_clk);
+	clk_disable(hdmi.sys_clk);
 
 	dispc_runtime_put();
 	dss_runtime_put();
@@ -855,7 +860,7 @@ static int hdmi_runtime_resume(struct device *dev)
 		goto err_get_dispc;
 
 
-//	clk_enable(hdmi.sys_clk);
+	clk_enable(hdmi.sys_clk);
 
 	return 0;
 
