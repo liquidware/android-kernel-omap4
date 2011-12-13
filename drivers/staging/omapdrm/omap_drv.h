@@ -53,7 +53,7 @@ struct omap_overlay_manager * omap_encoder_get_manager(
 struct drm_encoder * omap_connector_attached_encoder (
 		struct drm_connector *connector);
 enum drm_connector_status omap_connector_detect(
-		struct drm_connector *connector, bool force);
+		struct drm_connector *connector, int force);
 
 struct drm_connector * omap_connector_init(struct drm_device *dev,
 		int connector_type, struct omap_dss_device *dssdev);

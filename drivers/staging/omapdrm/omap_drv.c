@@ -180,8 +180,7 @@ static int omap_modeset_init(struct drm_device *dev)
 		 * remainder (which could be a race condition if connected
 		 * status changes)
 		 */
-		if (omap_connector_detect(connector, true) ==
-				connector_status_connected) {
+		if (omap_connector_detect(connector, false) == connector_status_connected) {
 			connected_connectors |= (1 << priv->num_connectors);
 		}
 

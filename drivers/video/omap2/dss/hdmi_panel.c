@@ -190,7 +190,7 @@ static int hdmi_read_edid(struct omap_dss_device *dssdev, u8 *buf, int len)
 			goto err;
 	}
 
-	r = omapdss_hdmi_read_edid(buf, len);
+	r = omapdss_hdmi_read_edid(dssdev, buf, len);
 
 	if (dssdev->state == OMAP_DSS_DISPLAY_DISABLED ||
 			dssdev->state == OMAP_DSS_DISPLAY_SUSPENDED)
@@ -213,7 +213,7 @@ static bool hdmi_detect(struct omap_dss_device *dssdev)
 			goto err;
 	}
 
-	r = omapdss_hdmi_detect();
+	r = omapdss_hdmi_detect(dssdev);
 
 	if (dssdev->state == OMAP_DSS_DISPLAY_DISABLED ||
 			dssdev->state == OMAP_DSS_DISPLAY_SUSPENDED)

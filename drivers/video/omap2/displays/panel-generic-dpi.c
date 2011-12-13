@@ -306,6 +306,8 @@ struct panel_drv_data {
 	struct panel_config *panel_config;
 };
 
+static bool generic_dpi_panel_detect(struct omap_dss_device *dssdev);
+
 static inline struct panel_generic_dpi_data
 *get_panel_data(const struct omap_dss_device *dssdev)
 {
@@ -426,6 +428,13 @@ static void __exit generic_dpi_panel_remove(struct omap_dss_device *dssdev)
 static int generic_dpi_panel_enable(struct omap_dss_device *dssdev)
 {
 	int r = 0;
+
+	/* Avoid enabling the panel if there is none around */
+	if (!generic_dpi_panel_detect(dssdev)) {
+		printk(KERN_ERR "Not enabling generic panel as no "
+				"connector is detected\n");
+		return 1;
+	}
 
 	r = generic_dpi_panel_power_on(dssdev);
 	if (r)

@@ -72,6 +72,8 @@ static struct {
 	struct hdmi_ip_data ip_data;
 	int code;
 	int mode;
+	struct hdmi_config cfg;
+
 	struct clk *sys_clk;
 } hdmi;
 
@@ -190,303 +192,6 @@ int hdmi_init_display(struct omap_dss_device *dssdev)
 	return 0;
 }
 
-static int hdmi_pll_init(enum hdmi_clk_refsel refsel, int dcofreq,
-		struct hdmi_pll_info *fmt, u16 sd)
-{
-	u32 r;
-
-	/* PLL start always use manual mode */
-	REG_FLD_MOD(PLLCTRL_PLL_CONTROL, 0x0, 0, 0);
-
-	r = hdmi_read_reg(PLLCTRL_CFG1);
-	r = FLD_MOD(r, fmt->regm, 20, 9); /* CFG1_PLL_REGM */
-	r = FLD_MOD(r, fmt->regn - 1, 8, 1);  /* CFG1_PLL_REGN */
-
-	hdmi_write_reg(PLLCTRL_CFG1, r);
-
-	r = hdmi_read_reg(PLLCTRL_CFG2);
-
-	r = FLD_MOD(r, 0x0, 12, 12); /* PLL_HIGHFREQ divide by 2 */
-	r = FLD_MOD(r, 0x1, 13, 13); /* PLL_REFEN */
-	r = FLD_MOD(r, 0x0, 14, 14); /* PHY_CLKINEN de-assert during locking */
-
-	if (dcofreq) {
-		/* divider programming for frequency beyond 1000Mhz */
-		REG_FLD_MOD(PLLCTRL_CFG3, sd, 17, 10);
-		r = FLD_MOD(r, 0x4, 3, 1); /* 1000MHz and 2000MHz */
-	} else {
-		r = FLD_MOD(r, 0x2, 3, 1); /* 500MHz and 1000MHz */
-	}
-
-	hdmi_write_reg(PLLCTRL_CFG2, r);
-
-	r = hdmi_read_reg(PLLCTRL_CFG4);
-	r = FLD_MOD(r, fmt->regm2, 24, 18);
-	r = FLD_MOD(r, fmt->regmf, 17, 0);
-
-	hdmi_write_reg(PLLCTRL_CFG4, r);
-
-	/* go now */
-	REG_FLD_MOD(PLLCTRL_PLL_GO, 0x1, 0, 0);
-
-	/* wait for bit change */
-	if (hdmi_wait_for_bit_change(PLLCTRL_PLL_GO, 0, 0, 1) != 1) {
-		DSSERR("PLL GO bit not set\n");
-		return -ETIMEDOUT;
-	}
-
-	/* Wait till the lock bit is set in PLL status */
-	if (hdmi_wait_for_bit_change(PLLCTRL_PLL_STATUS, 1, 1, 1) != 1) {
-		DSSWARN("cannot lock PLL\n");
-		DSSWARN("CFG1 0x%x\n",
-			hdmi_read_reg(PLLCTRL_CFG1));
-		DSSWARN("CFG2 0x%x\n",
-			hdmi_read_reg(PLLCTRL_CFG2));
-		DSSWARN("CFG4 0x%x\n",
-			hdmi_read_reg(PLLCTRL_CFG4));
-		return -ETIMEDOUT;
-	}
-
-	DSSDBG("PLL locked!\n");
-
-	return 0;
-}
-
-/* PHY_PWR_CMD */
-static int hdmi_set_phy_pwr(enum hdmi_phy_pwr val)
-{
-	/* Command for power control of HDMI PHY */
-	REG_FLD_MOD(HDMI_WP_PWR_CTRL, val, 7, 6);
-
-	/* Status of the power control of HDMI PHY */
-	if (hdmi_wait_for_bit_change(HDMI_WP_PWR_CTRL, 5, 4, val) != val) {
-		DSSERR("Failed to set PHY power mode to %d\n", val);
-		return -ETIMEDOUT;
-	}
-
-	return 0;
-}
-
-/* PLL_PWR_CMD */
-static int hdmi_set_pll_pwr(enum hdmi_pll_pwr val)
-{
-	/* Command for power control of HDMI PLL */
-	REG_FLD_MOD(HDMI_WP_PWR_CTRL, val, 3, 2);
-
-	/* wait till PHY_PWR_STATUS is set */
-	if (hdmi_wait_for_bit_change(HDMI_WP_PWR_CTRL, 1, 0, val) != val) {
-		DSSERR("Failed to set PHY_PWR_STATUS\n");
-		return -ETIMEDOUT;
-	}
-
-	return 0;
-}
-
-static int hdmi_pll_reset(void)
-{
-	/* SYSRESET  controlled by power FSM */
-	REG_FLD_MOD(PLLCTRL_PLL_CONTROL, 0x0, 3, 3);
-
-	/* READ 0x0 reset is in progress */
-	if (hdmi_wait_for_bit_change(PLLCTRL_PLL_STATUS, 0, 0, 1) != 1) {
-		DSSERR("Failed to sysreset PLL\n");
-		return -ETIMEDOUT;
-	}
-
-	return 0;
-}
-
-static int hdmi_phy_init(void)
-{
-	u16 r = 0;
-
-	r = hdmi_set_phy_pwr(HDMI_PHYPWRCMD_LDOON);
-	if (r)
-		return r;
-
-	r = hdmi_set_phy_pwr(HDMI_PHYPWRCMD_TXON);
-	if (r)
-		return r;
-
-	/*
-	 * Read address 0 in order to get the SCP reset done completed
-	 * Dummy access performed to make sure reset is done
-	 */
-	hdmi_read_reg(HDMI_TXPHY_TX_CTRL);
-
-	/*
-	 * Write to phy address 0 to configure the clock
-	 * use HFBITCLK write HDMI_TXPHY_TX_CONTROL_FREQOUT field
-	 */
-	REG_FLD_MOD(HDMI_TXPHY_TX_CTRL, 0x1, 31, 30);
-
-	/* Write to phy address 1 to start HDMI line (TXVALID and TMDSCLKEN) */
-	hdmi_write_reg(HDMI_TXPHY_DIGITAL_CTRL, 0xF0000000);
-
-	/* Setup max LDO voltage */
-	REG_FLD_MOD(HDMI_TXPHY_POWER_CTRL, 0xB, 3, 0);
-
-	/* Write to phy address 3 to change the polarity control */
-	REG_FLD_MOD(HDMI_TXPHY_PAD_CFG_CTRL, 0x1, 27, 27);
-
-	return 0;
-}
-
-static int hdmi_pll_program(struct hdmi_pll_info *fmt)
-{
-	u16 r = 0;
-	enum hdmi_clk_refsel refsel;
-
-	r = hdmi_set_pll_pwr(HDMI_PLLPWRCMD_ALLOFF);
-	if (r)
-		return r;
-
-	r = hdmi_set_pll_pwr(HDMI_PLLPWRCMD_BOTHON_ALLCLKS);
-	if (r)
-		return r;
-
-	r = hdmi_pll_reset();
-	if (r)
-		return r;
-
-	refsel = HDMI_REFSEL_SYSCLK;
-
-	r = hdmi_pll_init(refsel, fmt->dcofreq, fmt, fmt->regsd);
-	if (r)
-		return r;
-
-	return 0;
-}
-
-static void hdmi_phy_off(void)
-{
-	hdmi_set_phy_pwr(HDMI_PHYPWRCMD_OFF);
-}
-
-static int hdmi_core_ddc_edid(u8 *pedid, int ext)
-{
-	u32 i, j;
-	char checksum = 0;
-	u32 offset = 0;
-
-	/* Turn on CLK for DDC */
-	REG_FLD_MOD(HDMI_CORE_AV_DPD, 0x7, 2, 0);
-
-	/*
-	 * SW HACK : Without the Delay DDC(i2c bus) reads 0 values /
-	 * right shifted values( The behavior is not consistent and seen only
-	 * with some TV's)
-	 */
-	usleep_range(800, 1000);
-
-	if (!ext) {
-		/* Clk SCL Devices */
-		REG_FLD_MOD(HDMI_CORE_DDC_CMD, 0xA, 3, 0);
-
-		/* HDMI_CORE_DDC_STATUS_IN_PROG */
-		if (hdmi_wait_for_bit_change(HDMI_CORE_DDC_STATUS,
-						4, 4, 0) != 0) {
-			DSSERR("Failed to program DDC\n");
-			return -ETIMEDOUT;
-		}
-
-		/* Clear FIFO */
-		REG_FLD_MOD(HDMI_CORE_DDC_CMD, 0x9, 3, 0);
-
-		/* HDMI_CORE_DDC_STATUS_IN_PROG */
-		if (hdmi_wait_for_bit_change(HDMI_CORE_DDC_STATUS,
-						4, 4, 0) != 0) {
-			DSSERR("Failed to program DDC\n");
-			return -ETIMEDOUT;
-		}
-
-	} else {
-		if (ext % 2 != 0)
-			offset = 0x80;
-	}
-
-	/* Load Segment Address Register */
-	REG_FLD_MOD(HDMI_CORE_DDC_SEGM, ext/2, 7, 0);
-
-	/* Load Slave Address Register */
-	REG_FLD_MOD(HDMI_CORE_DDC_ADDR, 0xA0 >> 1, 7, 1);
-
-	/* Load Offset Address Register */
-	REG_FLD_MOD(HDMI_CORE_DDC_OFFSET, offset, 7, 0);
-
-	/* Load Byte Count */
-	REG_FLD_MOD(HDMI_CORE_DDC_COUNT1, 0x80, 7, 0);
-	REG_FLD_MOD(HDMI_CORE_DDC_COUNT2, 0x0, 1, 0);
-
-	/* Set DDC_CMD */
-	if (ext)
-		REG_FLD_MOD(HDMI_CORE_DDC_CMD, 0x4, 3, 0);
-	else
-		REG_FLD_MOD(HDMI_CORE_DDC_CMD, 0x2, 3, 0);
-
-	/* HDMI_CORE_DDC_STATUS_BUS_LOW */
-	if (REG_GET(HDMI_CORE_DDC_STATUS, 6, 6) == 1) {
-		DSSWARN("I2C Bus Low?\n");
-		return -EIO;
-	}
-	/* HDMI_CORE_DDC_STATUS_NO_ACK */
-	if (REG_GET(HDMI_CORE_DDC_STATUS, 5, 5) == 1) {
-		DSSWARN("I2C No Ack\n");
-		return -EIO;
-	}
-
-	i = ext * 128;
-	j = 0;
-	while (((REG_GET(HDMI_CORE_DDC_STATUS, 4, 4) == 1) ||
-			(REG_GET(HDMI_CORE_DDC_STATUS, 2, 2) == 0)) &&
-			j < 128) {
-
-		if (REG_GET(HDMI_CORE_DDC_STATUS, 2, 2) == 0) {
-			/* FIFO not empty */
-			pedid[i++] = REG_GET(HDMI_CORE_DDC_DATA, 7, 0);
-			j++;
-		}
-	}
-
-	for (j = 0; j < 128; j++)
-		checksum += pedid[j];
-
-	if (checksum != 0) {
-		DSSERR("E-EDID checksum failed!!\n");
-		return -EIO;
-	}
-
-	return 0;
-}
-
-static int read_edid(u8 *pedid, u16 max_length)
-{
-	int r = 0, n = 0, i = 0;
-	int max_ext_blocks = (max_length / 128) - 1;
-
-	r = hdmi_core_ddc_edid(pedid, 0);
-	if (r) {
-		return r;
-	} else {
-		n = pedid[0x7e];
-
-		/*
-		 * README: need to comply with max_length set by the caller.
-		 * Better implementation should be to allocate necessary
-		 * memory to store EDID according to nb_block field found
-		 * in first block
-		 */
-		if (n > max_ext_blocks)
-			n = max_ext_blocks;
-
-		for (i = 1; i <= n; i++) {
-			r = hdmi_core_ddc_edid(pedid, i);
-			if (r)
-				return r;
-		}
-	}
-	return 0;
-}
 
 static int get_timings_index(void)
 {
@@ -693,6 +398,7 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 	return 0;
 err:
 	hdmi_runtime_put();
+
 	return -EIO;
 }
 
@@ -757,7 +463,7 @@ void hdmi_dump_regs(struct seq_file *s)
 	mutex_unlock(&hdmi.lock);
 }
 
-int omapdss_hdmi_read_edid(u8 *buf, int len)
+int omapdss_hdmi_read_edid(struct omap_dss_device *dssdev, u8 *buf, int len)
 {
 	int r;
 
@@ -774,7 +480,7 @@ int omapdss_hdmi_read_edid(u8 *buf, int len)
 	return r;
 }
 
-bool omapdss_hdmi_detect(void)
+bool omapdss_hdmi_detect(struct omap_dss_device *dssdev)
 {
 	int r;
 

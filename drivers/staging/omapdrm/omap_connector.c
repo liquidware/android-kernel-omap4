@@ -86,20 +86,17 @@ void omap_connector_dpms(struct drm_connector *connector, int mode)
 }
 
 enum drm_connector_status omap_connector_detect(
-		struct drm_connector *connector, bool force)
+		struct drm_connector *connector, int force)
 {
 	struct omap_connector *omap_connector = to_omap_connector(connector);
 	struct omap_dss_device *dssdev = omap_connector->dssdev;
 	struct omap_dss_driver *dssdrv = dssdev->driver;
 	enum drm_connector_status ret;
 
-	if (dssdrv->is_detected(dssdev)) {
+	if (dssdrv->detect(dssdev))
 		ret = connector_status_connected;
-	} else {
+	else
 		ret = connector_status_disconnected;
-	}
-
-	VERB("%s: %d (force=%d)", omap_connector->dssdev->name, ret, force);
 
 	return ret;
 }
@@ -239,10 +236,10 @@ static int omap_connector_get_modes(struct drm_connector *connector)
 	 * LCD panels) we just return a single mode corresponding to the
 	 * currently configured timings:
 	 */
-	if (dssdrv->get_edid) {
+	if (dssdrv->read_edid) {
 		void *edid = kzalloc(MAX_EDID, GFP_KERNEL);
 
-		if ((dssdrv->get_edid(dssdev, edid, MAX_EDID) == 0) &&
+		if ((dssdrv->read_edid(dssdev, edid, MAX_EDID) == 0) &&
 				drm_edid_is_valid(edid)) {
 			drm_mode_connector_update_edid_property(connector, edid);
 			n = drm_add_edid_modes(connector, edid);
