@@ -159,9 +159,9 @@ static int omap_modeset_init(struct drm_device *dev)
 		}
 
 		if (!(dssdev->driver->get_timings ||
-					dssdev->driver->get_edid)) {
+					dssdev->driver->read_edid)) {
 			dev_warn(dev->dev, "%s driver does not support "
-				"get_timings or get_edid.. skipping it!\n",
+				"get_timings or read_edid.. skipping it!\n",
 				dssdev->name);
 			return 0;
 		}
