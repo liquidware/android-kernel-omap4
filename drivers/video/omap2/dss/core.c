@@ -439,6 +439,8 @@ int omap_dss_register_driver(struct omap_dss_driver *dssdriver)
 	if (dssdriver->get_recommended_bpp == NULL)
 		dssdriver->get_recommended_bpp =
 			omapdss_default_get_recommended_bpp;
+	if (!dssdriver->detect)
+		dssdriver->detect = omapdss_default_detect;
 
 	return driver_register(&dssdriver->driver);
 }

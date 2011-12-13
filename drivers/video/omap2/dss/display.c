@@ -324,6 +324,16 @@ void omapdss_default_get_resolution(struct omap_dss_device *dssdev,
 }
 EXPORT_SYMBOL(omapdss_default_get_resolution);
 
+bool omapdss_default_detect(struct omap_dss_device *dssdev)
+{
+	if (dssdev->state == OMAP_DSS_DISPLAY_SUSPENDED)
+		/* show resume info for suspended displays */
+		return dssdev->activate_after_resume;
+	else
+		return dssdev->state != OMAP_DSS_DISPLAY_DISABLED;
+}
+EXPORT_SYMBOL(omapdss_default_detect);
+
 void default_get_overlay_fifo_thresholds(enum omap_plane plane,
 		u32 fifo_size, u32 burst_size,
 		u32 *fifo_low, u32 *fifo_high)
