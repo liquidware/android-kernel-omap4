@@ -505,21 +505,38 @@ int omap_connector_set_update_mode(struct drm_connector *connector,
 }
 EXPORT_SYMBOL(omap_connector_set_update_mode);
 
-/*static struct device_attribute omap_connector_attrs[] = {
-	__ATTR(auto_update, S_IRUGO | S_IWUSR, show_auto_update, store_auto_update),
-	__ATTR(auto_update_freq, S_IRUGO | S_IWUSR, show_upd_freq, store_upd_freq),
+static ssize_t do_force_update(struct device *dev,
+			  struct device_attribute *attr, char *buf)
+{
+	struct omap_dss_device *dssdev = container_of(dev, struct omap_dss_device, dev);
+	struct omap_dss_driver *dssdrv = dssdev->driver;
+	u16 w, h;
+
+	if (!dssdrv || !dssdrv->update)
+		return 0;
+
+	if (dssdrv->sync)
+		dssdrv->sync(dssdev);
+
+	dssdrv->get_resolution(dssdev, &w, &h);
+	dssdrv->update(dssdev, 0, 0, w, h);
+
+	return sprintf(buf, "display update done\n");
+}
+
+static struct device_attribute omap_connector_attrs[] = {
+	__ATTR(force_update, S_IRUGO, do_force_update, NULL),
 };
 
 int omap_connector_create_sysfs(struct omap_connector *oconnect)
 {
-	int i;
 	int r, t;
 
 	DBG("%s\n", oconnect->dssdev->name);
 	for (t = 0; t < ARRAY_SIZE(omap_connector_attrs); t++) {
-		r = device_create_file(oconnect->dssdev->dev, omap_connector_attrs);
+		r = device_create_file(&(oconnect->dssdev->dev), omap_connector_attrs);
 		if (r) {
-			dev_err(oconnect->dev, "failed to create sysfs "
+			dev_err(&oconnect->dssdev->dev, "failed to create sysfs "
 					"files\n");
 			return r;
 		}
@@ -527,7 +544,7 @@ int omap_connector_create_sysfs(struct omap_connector *oconnect)
 
 	return 0;
 }
-*/
+
 
 int omap_connector_sync(struct drm_connector *connector)
 {
@@ -621,6 +638,7 @@ struct drm_connector * omap_connector_init(struct drm_device *dev,
 			DBG("non-manual update device: %s", dssdev->name);
 	}
 
+	omap_connector_create_sysfs(omap_connector);
 	return connector;
 
 fail:
