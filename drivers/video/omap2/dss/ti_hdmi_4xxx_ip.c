@@ -425,6 +425,8 @@ bool ti_hdmi_4xxx_detect(struct hdmi_ip_data *ip_data)
 
 	void __iomem *base = hdmi_core_sys_base(ip_data);
 
+	msleep(500);
+
 	/* HPD */
 	r = REG_GET(base, HDMI_CORE_SYS_SYS_STAT, 1, 1);
 
