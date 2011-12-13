@@ -444,6 +444,8 @@ int dss_calc_clock_rates(struct dss_clock_info *cinfo)
 
 int dss_set_clock_div(struct dss_clock_info *cinfo)
 {
+	WARN_ON(1);
+
 	if (dss.dpll4_m4_ck) {
 		unsigned long prate;
 		int r;
@@ -452,14 +454,16 @@ int dss_set_clock_div(struct dss_clock_info *cinfo)
 		DSSDBG("dpll4_m4 = %ld\n", prate);
 
 		r = clk_set_rate(dss.dpll4_m4_ck, prate / cinfo->fck_div);
-		if (r)
+		if (r) {
+			pr_err("dss_set_clock_div: Failed to set clk %d\n", r);
 			return r;
+		}
 	} else {
 		if (cinfo->fck_div != 0)
 			return -EINVAL;
 	}
 
-	DSSDBG("fck = %ld (%d)\n", cinfo->fck, cinfo->fck_div);
+	pr_err("fck = %ld (%d)\n", cinfo->fck, cinfo->fck_div);
 
 	return 0;
 }

@@ -33,9 +33,12 @@
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
+#include <linux/i2c.h>
 #include <video/omapdss.h>
 
 #include <video/omap-panel-generic-dpi.h>
+
+#define EDID_LENGTH 256
 
 struct panel_config {
 	struct omap_video_timings timings;
