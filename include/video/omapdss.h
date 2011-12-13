@@ -316,6 +316,9 @@ struct omap_dss_board_info {
 /* Init with the board info */
 extern int omap_display_init(struct omap_dss_board_info *board_data);
 
+/* HDMI mux init*/
+extern int omap_hdmi_enable_pads(void);
+
 struct omap_display_platform_data {
 	struct omap_dss_board_info *board_data;
 	/* TODO: Additional members to be added when PM is considered */

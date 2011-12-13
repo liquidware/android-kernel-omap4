@@ -1028,9 +1028,9 @@ static void omap_4430sdp_display_init(void)
 		pr_err("%s: Could not get display_sel GPIO\n", __func__);
 
 	sdp4430_lcd_init();
-	sdp4430_hdmi_mux_init();
 	sdp4430_picodlp_init();
 	omap_display_init(&sdp4430_dss_data);
+	omap_hdmi_enable_pads();
 }
 
 #ifdef CONFIG_OMAP_MUX
