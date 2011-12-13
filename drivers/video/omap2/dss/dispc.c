@@ -3134,7 +3134,7 @@ static void dispc_error_worker(struct work_struct *work)
 
 		ovl = omap_dss_get_overlay(i);
 		bit = fifo_underflow_bits[i];
-
+#if 0
 		if (bit & errors) {
 			DSSERR("FIFO UNDERFLOW on %s, disabling the overlay\n",
 					ovl->name);
@@ -3142,6 +3142,7 @@ static void dispc_error_worker(struct work_struct *work)
 			dispc_mgr_go(ovl->manager->id);
 			mdelay(50);
 		}
+#endif
 	}
 
 	for (i = 0; i < omap_dss_get_num_overlay_managers(); ++i) {
@@ -3150,7 +3151,7 @@ static void dispc_error_worker(struct work_struct *work)
 
 		mgr = omap_dss_get_overlay_manager(i);
 		bit = sync_lost_bits[i];
-
+#if 0
 		if (bit & errors) {
 			struct omap_dss_device *dssdev = mgr->device;
 			bool enable;
@@ -3177,6 +3178,7 @@ static void dispc_error_worker(struct work_struct *work)
 			if (enable)
 				dssdev->driver->enable(dssdev);
 		}
+#endif
 	}
 
 	if (errors & DISPC_IRQ_OCP_ERR) {
