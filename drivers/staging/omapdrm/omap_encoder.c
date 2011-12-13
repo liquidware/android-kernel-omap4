@@ -172,7 +172,7 @@ struct drm_encoder * omap_encoder_init(struct drm_device *dev,
 	info.trans_key = 0x00000000;
 	info.trans_key_type = OMAP_DSS_COLOR_KEY_GFX_DST;
 	info.trans_enabled = false;
-	info.alpha_enabled = true;
+	info.partial_alpha_enabled = true;
 
 	ret = mgr->set_manager_info(mgr, &info);
 	if (ret) {
