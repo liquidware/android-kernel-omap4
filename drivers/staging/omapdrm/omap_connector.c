@@ -371,6 +371,11 @@ void omap_connector_mode_set(struct drm_connector *connector,
 			mode->vdisplay, mode->vsync_start,
 			mode->vsync_end, mode->vtotal, mode->type, mode->flags);
 
+	if (!dssdrv->set_timings || !dssdrv->check_timings) {
+		dev_warn(dev->dev, "driver doesn't support changing timings\n");
+		return;
+	}
+
 	if (dssdrv->check_timings(dssdev, &timings)) {
 		dev_err(dev->dev, "could not set timings\n");
 		return;
