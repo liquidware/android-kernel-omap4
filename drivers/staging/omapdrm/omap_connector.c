@@ -298,14 +298,18 @@ static int omap_connector_mode_valid(struct drm_connector *connector,
 	copy_timings_drm_to_omap(&timings, mode);
 	mode->vrefresh = drm_mode_vrefresh(mode);
 
-	if (!dssdrv->check_timings(dssdev, &timings)) {
-		/* check if vrefresh is still valid */
-		new_mode = drm_mode_duplicate(dev, mode);
-		new_mode->clock = timings.pixel_clock;
-		new_mode->vrefresh = 0;
-		if (mode->vrefresh == drm_mode_vrefresh(new_mode))
-			ret = MODE_OK;
-		drm_mode_destroy(dev, new_mode);
+	if (dssdrv->check_timings) {
+		if (!dssdrv->check_timings(dssdev, &timings)) {
+			/* check if vrefresh is still valid */
+			new_mode = drm_mode_duplicate(dev, mode);
+			new_mode->clock = timings.pixel_clock;
+			new_mode->vrefresh = 0;
+			if (mode->vrefresh == drm_mode_vrefresh(new_mode))
+				ret = MODE_OK;
+			drm_mode_destroy(dev, new_mode);
+		}
+	} else {
+		ret = MODE_OK;
 	}
 
 	DBG("connector: mode %s: "
