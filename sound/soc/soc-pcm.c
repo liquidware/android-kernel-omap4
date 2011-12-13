@@ -947,6 +947,25 @@ static int dsp_prune_old_paths(struct snd_soc_pcm_runtime *fe, int stream,
 		count++;
 	}
 
+	/* ASoC PCM operations */
+	if (rtd->dai_link->dynamic) {
+		rtd->ops.open		= soc_dsp_fe_dai_open;
+		rtd->ops.hw_params	= soc_dsp_fe_dai_hw_params;
+		rtd->ops.prepare	= soc_dsp_fe_dai_prepare;
+		rtd->ops.trigger	= soc_dsp_fe_dai_trigger;
+		rtd->ops.hw_free	= soc_dsp_fe_dai_hw_free;
+		rtd->ops.close		= soc_dsp_fe_dai_close;
+	} else {
+		rtd->ops.open		= soc_pcm_open;
+		rtd->ops.hw_params	= soc_pcm_hw_params;
+		rtd->ops.prepare	= soc_pcm_prepare;
+		rtd->ops.trigger	= soc_pcm_trigger;
+		rtd->ops.hw_free	= soc_pcm_hw_free;
+		rtd->ops.close		= soc_pcm_close;
+	}
+	rtd->ops.pointer	= soc_pcm_pointer;
+	rtd->ops.ioctl		= soc_pcm_ioctl;
+
 	/* the number of old paths pruned */
 out:
 	kfree(list);
