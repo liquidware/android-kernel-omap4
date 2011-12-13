@@ -20,7 +20,6 @@
 #ifndef __OMAP_DRM_H__
 #define __OMAP_DRM_H__
 
-#include <linux/module.h>
 #include <drm/drmP.h>
 
 /* interface that plug-in drivers (for now just PVR) can implement */
