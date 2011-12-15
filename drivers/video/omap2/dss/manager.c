@@ -507,6 +507,7 @@ struct overlay_cache_data {
 	bool replication;
 	bool ilace;
 
+	enum omap_burst_size burst_size;
 	u32 fifo_low;
 	u32 fifo_high;
 };
@@ -946,7 +947,8 @@ static int configure_overlay(enum omap_plane plane)
 
 	dispc_enable_replication(plane, c->replication);
 
-	dispc_set_fifo_threshold(plane, c->fifo_low, c->fifo_high);
+	dispc_set_burst_size(plane, c->burst_size);
+	dispc_setup_plane_fifo(plane, c->fifo_low, c->fifo_high);
 
 	dispc_enable_plane(plane, 1);
 
@@ -1422,7 +1424,7 @@ static int omap_dss_mgr_apply(struct omap_overlay_manager *mgr)
 	/* Configure overlay fifos */
 	for (i = 0; i < omap_dss_get_num_overlays(); ++i) {
 		struct omap_dss_device *dssdev;
-		u32 size, burst_size;
+		u32 size;
 
 		ovl = omap_dss_get_overlay(i);
 
@@ -1440,8 +1442,6 @@ static int omap_dss_mgr_apply(struct omap_overlay_manager *mgr)
 		if (use_fifomerge)
 			size *= 3;
 
-		burst_size = dispc_get_burst_size(ovl->id);
-
 		switch (dssdev->type) {
 		case OMAP_DISPLAY_TYPE_DPI:
 		case OMAP_DISPLAY_TYPE_DBI:
@@ -1449,13 +1449,13 @@ static int omap_dss_mgr_apply(struct omap_overlay_manager *mgr)
 		case OMAP_DISPLAY_TYPE_VENC:
 		case OMAP_DISPLAY_TYPE_HDMI:
 			default_get_overlay_fifo_thresholds(ovl->id, size,
-					burst_size, &oc->fifo_low,
+					&oc->burst_size, &oc->fifo_low,
 					&oc->fifo_high);
 			break;
 #ifdef CONFIG_OMAP2_DSS_DSI
 		case OMAP_DISPLAY_TYPE_DSI:
 			dsi_get_overlay_fifo_thresholds(ovl->id, size,
-					burst_size, &oc->fifo_low,
+					&oc->burst_size, &oc->fifo_low,
 					&oc->fifo_high);
 			break;
 #endif

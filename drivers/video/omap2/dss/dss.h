@@ -95,6 +95,12 @@ extern unsigned int dss_debug;
 #define FLD_MOD(orig, val, start, end) \
 	(((orig) & ~FLD_MASK(start, end)) | FLD_VAL(val, start, end))
 
+enum omap_burst_size {
+	OMAP_DSS_BURST_4x32 = 0,
+	OMAP_DSS_BURST_8x32 = 1,
+	OMAP_DSS_BURST_16x32 = 2,
+};
+
 enum omap_parallel_interface_mode {
 	OMAP_DSS_PARALLELMODE_BYPASS,		/* MIPI DPI */
 	OMAP_DSS_PARALLELMODE_RFBI,		/* MIPI DBI */
@@ -178,7 +184,7 @@ void dss_uninit_device(struct platform_device *pdev,
 bool dss_use_replication(struct omap_dss_device *dssdev,
 		enum omap_color_mode mode);
 void default_get_overlay_fifo_thresholds(enum omap_plane plane,
-		u32 fifo_size, u32 burst_size,
+		u32 fifo_size, enum omap_burst_size *burst_size,
 		u32 *fifo_low, u32 *fifo_high);
 
 /* manager */
@@ -287,7 +293,7 @@ int dsi_pll_init(struct platform_device *dsidev, bool enable_hsclk,
 		bool enable_hsdiv);
 void dsi_pll_uninit(struct platform_device *dsidev, bool disconnect_lanes);
 void dsi_get_overlay_fifo_thresholds(enum omap_plane plane,
-		u32 fifo_size, u32 burst_size,
+		u32 fifo_size, enum omap_burst_size *burst_size,
 		u32 *fifo_low, u32 *fifo_high);
 void dsi_wait_pll_hsdiv_dispc_active(struct platform_device *dsidev);
 void dsi_wait_pll_hsdiv_dsi_active(struct platform_device *dsidev);
@@ -388,9 +394,10 @@ void dispc_enable_fifohandcheck(enum omap_channel channel, bool enable);
 void dispc_set_lcd_size(enum omap_channel channel, u16 width, u16 height);
 void dispc_set_digit_size(u16 width, u16 height);
 u32 dispc_get_plane_fifo_size(enum omap_plane plane);
-void dispc_set_fifo_threshold(enum omap_plane plane, u32 low, u32 high);
+void dispc_setup_plane_fifo(enum omap_plane plane, u32 low, u32 high);
 void dispc_enable_fifomerge(bool enable);
-u32 dispc_get_burst_size(enum omap_plane plane);
+void dispc_set_burst_size(enum omap_plane plane,
+		enum omap_burst_size burst_size);
 void dispc_enable_cpr(enum omap_channel channel, bool enable);
 void dispc_set_cpr_coef(enum omap_channel channel,
 		struct omap_dss_cpr_coefs *coefs);
