@@ -501,7 +501,23 @@ struct overlay_cache_data {
 
 	bool enabled;
 
-	struct omap_overlay_info info;
+	u32 paddr;
+	void __iomem *vaddr;
+	u32 p_uv_addr; /* relevant for NV12 format only */
+	u16 screen_width;
+	u16 width;
+	u16 height;
+	enum omap_color_mode color_mode;
+	u8 rotation;
+	enum omap_dss_rotation_type rotation_type;
+	bool mirror;
+
+	u16 pos_x;
+	u16 pos_y;
+	u16 out_width;	/* if 0, out_width == width */
+	u16 out_height;	/* if 0, out_height == height */
+	u8 global_alpha;
+	u8 pre_mult_alpha;
 
 	enum omap_channel channel;
 	bool replication;
@@ -521,7 +537,13 @@ struct manager_cache_data {
 	 * VSYNC/EVSYNC */
 	bool shadow_dirty;
 
-	struct omap_overlay_manager_info info;
+	u32 default_color;
+
+	enum omap_dss_trans_key_type trans_key_type;
+	u32 trans_key;
+	bool trans_enabled;
+
+	bool alpha_enabled;
 
 	bool manual_update;
 	bool do_manual_update;
@@ -787,12 +809,10 @@ static bool rectangle_intersects(int x1, int y1, int w1, int h1,
 
 static bool dispc_is_overlay_scaled(struct overlay_cache_data *oc)
 {
-	struct omap_overlay_info *oi = &oc->info;
-
-	if (oi->out_width != 0 && oi->width != oi->out_width)
+	if (oc->out_width != 0 && oc->width != oc->out_width)
 		return true;
 
-	if (oi->out_height != 0 && oi->height != oi->out_height)
+	if (oc->out_height != 0 && oc->height != oc->out_height)
 		return true;
 
 	return false;
@@ -802,8 +822,6 @@ static int configure_overlay(enum omap_plane plane)
 {
 	struct overlay_cache_data *c;
 	struct manager_cache_data *mc;
-	struct omap_overlay_info *oi;
-	struct omap_overlay_manager_info *mi;
 	u16 outw, outh;
 	u16 x, y, w, h;
 	u32 paddr;
@@ -813,7 +831,6 @@ static int configure_overlay(enum omap_plane plane)
 	DSSDBGF("%d", plane);
 
 	c = &dss_cache.overlay_cache[plane];
-	oi = &c->info;
 
 	if (!c->enabled) {
 		dispc_enable_plane(plane, 0);
@@ -821,15 +838,14 @@ static int configure_overlay(enum omap_plane plane)
 	}
 
 	mc = &dss_cache.manager_cache[c->channel];
-	mi = &mc->info;
 
-	x = oi->pos_x;
-	y = oi->pos_y;
-	w = oi->width;
-	h = oi->height;
-	outw = oi->out_width == 0 ? oi->width : oi->out_width;
-	outh = oi->out_height == 0 ? oi->height : oi->out_height;
-	paddr = oi->paddr;
+	x = c->pos_x;
+	y = c->pos_y;
+	w = c->width;
+	h = c->height;
+	outw = c->out_width == 0 ? c->width : c->out_width;
+	outh = c->out_height == 0 ? c->height : c->out_height;
+	paddr = c->paddr;
 
 	orig_w = w;
 	orig_h = h;
@@ -848,7 +864,7 @@ static int configure_overlay(enum omap_plane plane)
 			return 0;
 		}
 
-		switch (oi->color_mode) {
+		switch (c->color_mode) {
 		case OMAP_DSS_COLOR_NV12:
 			bpp = 8;
 			break;
@@ -878,23 +894,23 @@ static int configure_overlay(enum omap_plane plane)
 			BUG();
 		}
 
-		if (mc->x > oi->pos_x) {
+		if (mc->x > c->pos_x) {
 			x = 0;
-			outw -= (mc->x - oi->pos_x);
-			paddr += (mc->x - oi->pos_x) *
+			outw -= (mc->x - c->pos_x);
+			paddr += (mc->x - c->pos_x) *
 				scale_x_m / scale_x_d * bpp / 8;
 		} else {
-			x = oi->pos_x - mc->x;
+			x = c->pos_x - mc->x;
 		}
 
-		if (mc->y > oi->pos_y) {
+		if (mc->y > c->pos_y) {
 			y = 0;
-			outh -= (mc->y - oi->pos_y);
-			paddr += (mc->y - oi->pos_y) *
+			outh -= (mc->y - c->pos_y);
+			paddr += (mc->y - c->pos_y) *
 				scale_y_m / scale_y_d *
-				oi->screen_width * bpp / 8;
+				c->screen_width * bpp / 8;
 		} else {
-			y = oi->pos_y - mc->y;
+			y = c->pos_y - mc->y;
 		}
 
 		if (mc->w < (x + outw))
@@ -913,8 +929,8 @@ static int configure_overlay(enum omap_plane plane)
 		 * the width if the original width was bigger.
 		 */
 		if ((w & 1) &&
-				(oi->color_mode == OMAP_DSS_COLOR_YUV2 ||
-				 oi->color_mode == OMAP_DSS_COLOR_UYVY)) {
+				(c->color_mode == OMAP_DSS_COLOR_YUV2 ||
+				 c->color_mode == OMAP_DSS_COLOR_UYVY)) {
 			if (orig_w > w)
 				w += 1;
 			else
@@ -924,19 +940,19 @@ static int configure_overlay(enum omap_plane plane)
 
 	r = dispc_setup_plane(plane,
 			paddr,
-			oi->screen_width,
+			c->screen_width,
 			x, y,
 			w, h,
 			outw, outh,
-			oi->color_mode,
+			c->color_mode,
 			c->ilace,
-			oi->rotation_type,
-			oi->rotation,
-			oi->mirror,
-			oi->global_alpha,
-			oi->pre_mult_alpha,
+			c->rotation_type,
+			c->rotation,
+			c->mirror,
+			c->global_alpha,
+			c->pre_mult_alpha,
 			c->channel,
-			oi->p_uv_addr);
+			c->p_uv_addr);
 
 	if (r) {
 		/* this shouldn't happen */
@@ -957,17 +973,16 @@ static int configure_overlay(enum omap_plane plane)
 
 static void configure_manager(enum omap_channel channel)
 {
-	struct omap_overlay_manager_info *mi;
+	struct manager_cache_data *c;
 
 	DSSDBGF("%d", channel);
 
-	/* picking info from the cache */
-	mi = &dss_cache.manager_cache[channel].info;
+	c = &dss_cache.manager_cache[channel];
 
-	dispc_set_default_color(channel, mi->default_color);
-	dispc_set_trans_key(channel, mi->trans_key_type, mi->trans_key);
-	dispc_enable_trans_key(channel, mi->trans_enabled);
-	dispc_enable_alpha_blending(channel, mi->alpha_enabled);
+	dispc_set_default_color(channel, c->default_color);
+	dispc_set_trans_key(channel, c->trans_key_type, c->trans_key);
+	dispc_enable_trans_key(channel, c->trans_enabled);
+	dispc_enable_alpha_blending(channel, c->alpha_enabled);
 	if (dss_has_feature(FEAT_CPR)) {
 		dispc_enable_cpr(channel, mi->cpr_enable);
 		dispc_set_cpr_coef(channel, &mi->cpr_coefs);
@@ -1089,7 +1104,6 @@ void dss_setup_partial_planes(struct omap_dss_device *dssdev,
 {
 	struct overlay_cache_data *oc;
 	struct manager_cache_data *mc;
-	struct omap_overlay_info *oi;
 	const int num_ovls = dss_feat_get_num_ovls();
 	struct omap_overlay_manager *mgr;
 	int i;
@@ -1132,7 +1146,6 @@ void dss_setup_partial_planes(struct omap_dss_device *dssdev,
 			unsigned outw, outh;
 
 			oc = &dss_cache.overlay_cache[i];
-			oi = &oc->info;
 
 			if (oc->channel != mgr->id)
 				continue;
@@ -1148,39 +1161,39 @@ void dss_setup_partial_planes(struct omap_dss_device *dssdev,
 			if (!dispc_is_overlay_scaled(oc))
 				continue;
 
-			outw = oi->out_width == 0 ?
-				oi->width : oi->out_width;
-			outh = oi->out_height == 0 ?
-				oi->height : oi->out_height;
+			outw = oc->out_width == 0 ?
+				oc->width : oc->out_width;
+			outh = oc->out_height == 0 ?
+				oc->height : oc->out_height;
 
 			/* is the overlay outside the update region? */
 			if (!rectangle_intersects(x, y, w, h,
-						oi->pos_x, oi->pos_y,
+						oc->pos_x, oc->pos_y,
 						outw, outh))
 				continue;
 
 			/* if the overlay totally inside the update region? */
-			if (rectangle_subset(oi->pos_x, oi->pos_y, outw, outh,
+			if (rectangle_subset(oc->pos_x, oc->pos_y, outw, outh,
 						x, y, w, h))
 				continue;
 
-			if (x > oi->pos_x)
-				x1 = oi->pos_x;
+			if (x > oc->pos_x)
+				x1 = oc->pos_x;
 			else
 				x1 = x;
 
-			if (y > oi->pos_y)
-				y1 = oi->pos_y;
+			if (y > oc->pos_y)
+				y1 = oc->pos_y;
 			else
 				y1 = y;
 
-			if ((x + w) < (oi->pos_x + outw))
-				x2 = oi->pos_x + outw;
+			if ((x + w) < (oc->pos_x + outw))
+				x2 = oc->pos_x + outw;
 			else
 				x2 = x + w;
 
-			if ((y + h) < (oi->pos_y + outh))
-				y2 = oi->pos_y + outh;
+			if ((y + h) < (oc->pos_y + outh))
+				y2 = oc->pos_y + outh;
 			else
 				y2 = y + h;
 
@@ -1362,7 +1375,23 @@ static int omap_dss_mgr_apply(struct omap_overlay_manager *mgr)
 
 		ovl->info_dirty = false;
 		oc->dirty = true;
-		oc->info = ovl->info;
+
+		oc->paddr = ovl->info.paddr;
+		oc->vaddr = ovl->info.vaddr;
+		oc->p_uv_addr = ovl->info.p_uv_addr;
+		oc->screen_width = ovl->info.screen_width;
+		oc->width = ovl->info.width;
+		oc->height = ovl->info.height;
+		oc->color_mode = ovl->info.color_mode;
+		oc->rotation = ovl->info.rotation;
+		oc->rotation_type = ovl->info.rotation_type;
+		oc->mirror = ovl->info.mirror;
+		oc->pos_x = ovl->info.pos_x;
+		oc->pos_y = ovl->info.pos_y;
+		oc->out_width = ovl->info.out_width;
+		oc->out_height = ovl->info.out_height;
+		oc->global_alpha = ovl->info.global_alpha;
+		oc->pre_mult_alpha = ovl->info.pre_mult_alpha;
 
 		oc->replication =
 			dss_use_replication(dssdev, ovl->info.color_mode);
@@ -1400,7 +1429,12 @@ static int omap_dss_mgr_apply(struct omap_overlay_manager *mgr)
 
 		mgr->info_dirty = false;
 		mc->dirty = true;
-		mc->info = mgr->info;
+
+		mc->default_color = mgr->info.default_color;
+		mc->trans_key_type = mgr->info.trans_key_type;
+		mc->trans_key = mgr->info.trans_key;
+		mc->trans_enabled = mgr->info.trans_enabled;
+		mc->alpha_enabled = mgr->info.alpha_enabled;
 
 		mc->manual_update =
 			dssdev->caps & OMAP_DSS_DISPLAY_CAP_MANUAL_UPDATE;
