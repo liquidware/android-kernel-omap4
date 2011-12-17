@@ -32,7 +32,6 @@ struct panel_generic_dpi_data {
 	const char *name;
 	int (*platform_enable)(struct omap_dss_device *dssdev);
 	void (*platform_disable)(struct omap_dss_device *dssdev);
-	int i2c_bus_num;
 };
 
 #endif /* __OMAP_PANEL_GENERIC_DPI_H */

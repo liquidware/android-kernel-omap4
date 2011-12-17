@@ -57,11 +57,6 @@ module_param_named(debug, dss_debug, bool, 0644);
 static int omap_dss_register_device(struct omap_dss_device *);
 static void omap_dss_unregister_device(struct omap_dss_device *);
 
-const char* omap_dss_get_def_disp()
-{
-	return def_disp_name;
-}
-
 /* REGULATORS */
 
 struct regulator *dss_get_vdds_dsi(void)
@@ -149,10 +144,6 @@ static int dss_initialize_debugfs(void)
 #ifdef CONFIG_OMAP2_DSS_VENC
 	debugfs_create_file("venc", S_IRUGO, dss_debugfs_dir,
 			&venc_dump_regs, &dss_debug_fops);
-#endif
-#ifdef CONFIG_OMAP4_DSS_HDMI
-	debugfs_create_file("hdmi", S_IRUGO, dss_debugfs_dir,
-			&hdmi_dump_regs, &dss_debug_fops);
 #endif
 	return 0;
 }
@@ -439,8 +430,6 @@ int omap_dss_register_driver(struct omap_dss_driver *dssdriver)
 	if (dssdriver->get_recommended_bpp == NULL)
 		dssdriver->get_recommended_bpp =
 			omapdss_default_get_recommended_bpp;
-	if (!dssdriver->detect)
-		dssdriver->detect = omapdss_default_detect;
 
 	return driver_register(&dssdriver->driver);
 }

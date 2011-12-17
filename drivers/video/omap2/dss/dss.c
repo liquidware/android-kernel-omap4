@@ -24,7 +24,6 @@
 
 #include <linux/kernel.h>
 #include <linux/io.h>
-#include <linux/export.h>
 #include <linux/err.h>
 #include <linux/delay.h>
 #include <linux/seq_file.h>
@@ -444,8 +443,6 @@ int dss_calc_clock_rates(struct dss_clock_info *cinfo)
 
 int dss_set_clock_div(struct dss_clock_info *cinfo)
 {
-	WARN_ON(1);
-
 	if (dss.dpll4_m4_ck) {
 		unsigned long prate;
 		int r;
@@ -454,16 +451,14 @@ int dss_set_clock_div(struct dss_clock_info *cinfo)
 		DSSDBG("dpll4_m4 = %ld\n", prate);
 
 		r = clk_set_rate(dss.dpll4_m4_ck, prate / cinfo->fck_div);
-		if (r) {
-			pr_err("dss_set_clock_div: Failed to set clk %d\n", r);
+		if (r)
 			return r;
-		}
 	} else {
 		if (cinfo->fck_div != 0)
 			return -EINVAL;
 	}
 
-	pr_err("fck = %ld (%d)\n", cinfo->fck, cinfo->fck_div);
+	DSSDBG("fck = %ld (%d)\n", cinfo->fck, cinfo->fck_div);
 
 	return 0;
 }
@@ -644,17 +639,6 @@ void dss_select_hdmi_venc_clk_source(enum dss_hdmi_venc_clk_source_select hdmi)
 	REG_FLD_MOD(DSS_CONTROL, hdmi, 15, 15);	/* VENC_HDMI_SWITCH */
 }
 
-enum dss_hdmi_venc_clk_source_select dss_get_hdmi_venc_clk_source(void)
-{
-	enum omap_display_type displays;
-
-	displays = dss_feat_get_supported_displays(OMAP_DSS_CHANNEL_DIGIT);
-	if ((displays & OMAP_DISPLAY_TYPE_HDMI) == 0)
-		return DSS_VENC_TV_CLK;
-
-	return REG_GET(DSS_CONTROL, 15, 15);
-}
-
 static int dss_get_clocks(void)
 {
 	struct clk *clk;
@@ -707,9 +691,9 @@ static void dss_put_clocks(void)
 	clk_put(dss.dss_clk);
 }
 
-int dss_runtime_pm_enabled(void)
+struct clk *dss_get_ick(void)
 {
-        return pm_runtime_enabled(&dss.pdev->dev);
+	return clk_get(&dss.pdev->dev, "ick");
 }
 
 int dss_runtime_get(void)
@@ -719,10 +703,7 @@ int dss_runtime_get(void)
 	DSSDBG("dss_runtime_get\n");
 
 	r = pm_runtime_get_sync(&dss.pdev->dev);
-	if (r < 0) {
-		pr_err("dss_runtime_get: failed %d\n", r);
-		WARN_ON(1);
-	}
+	WARN_ON(r < 0);
 	return r < 0 ? r : 0;
 }
 
@@ -843,11 +824,13 @@ static int omap_dsshw_remove(struct platform_device *pdev)
 static int dss_runtime_suspend(struct device *dev)
 {
 	dss_save_context();
+	clk_disable(dss.dss_clk);
 	return 0;
 }
 
 static int dss_runtime_resume(struct device *dev)
 {
+	clk_enable(dss.dss_clk);
 	dss_restore_context();
 	return 0;
 }

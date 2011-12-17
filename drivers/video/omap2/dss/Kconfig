@@ -1,5 +1,5 @@
 menuconfig OMAP2_DSS
-        tristate "OMAP2+ Display Subsystem support"
+        tristate "OMAP2+ Display Subsystem support (EXPERIMENTAL)"
         depends on ARCH_OMAP2PLUS
         help
 	  OMAP2+ Display Subsystem support.
@@ -70,7 +70,7 @@ config OMAP4_DSS_HDMI
 
 config OMAP2_DSS_SDI
 	bool "SDI support"
-	depends on ARCH_OMAP3 || ARCH_OMAP4
+	depends on ARCH_OMAP3
         default n
 	help
 	  SDI (Serial Display Interface) support.

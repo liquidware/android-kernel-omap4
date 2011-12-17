@@ -401,6 +401,7 @@ static int omapvid_setup_overlay(struct omap_vout_device *vout,
 
 	ovl->get_overlay_info(ovl, &info);
 	info.paddr = addr;
+	info.vaddr = NULL;
 	info.width = cropwidth;
 	info.height = cropheight;
 	info.color_mode = vout->dss_mode;
@@ -524,43 +525,6 @@ static int omapvid_apply_changes(struct omap_vout_device *vout)
 	return 0;
 }
 
-static int _program_cur(struct omap_vout_device *vout)
-{
-	int ret;
-	u32 addr = (unsigned long) vout->queued_buf_addr[vout->cur_frm->i]
-			+ vout->cropped_offset;
-
-	/* First save the configuration in ovelray structure */
-	ret = omapvid_init(vout, addr);
-	if (ret) {
-		printk(KERN_ERR VOUT_NAME
-				"failed to set overlay info\n");
-		return ret;
-	}
-	/* Enable the pipeline and set the Go bit */
-	ret = omapvid_apply_changes(vout);
-	if (ret)
-		printk(KERN_ERR VOUT_NAME
-				"failed to change mode\n");
-
-	return ret;
-}
-
-static struct videobuf_buffer * _get_next_frm(struct omap_vout_device *vout)
-{
-	struct videobuf_buffer *frm;
-
-	if (list_empty(&vout->dma_queue))
-		return NULL;
-
-	frm = list_entry(vout->dma_queue.next,
-			struct videobuf_buffer, queue);
-
-	list_del(&frm->queue);
-
-	return frm;
-}
-
 static void omap_vout_isr(void *arg, unsigned int irqstatus)
 {
 	int ret;
@@ -640,18 +604,45 @@ static void omap_vout_isr(void *arg, unsigned int irqstatus)
 			goto vout_isr_err;
 
 		vout->field_id ^= 1;
-		if (0 == fid) {
-			if (vout->cur_frm) {
-				vout->cur_frm->ts = timevalue;
-				vout->cur_frm->state = VIDEOBUF_DONE;
-				wake_up_interruptible(&vout->cur_frm->done);
-			}
-		}
-		vout->cur_frm = _get_next_frm(vout);
-		if (!vout->cur_frm)
+		if (fid != vout->field_id) {
+			if (0 == fid)
+				vout->field_id = fid;
+
 			goto vout_isr_err;
-		vout->cur_frm->state = VIDEOBUF_ACTIVE;
-		_program_cur(vout);
+		}
+		if (0 == fid) {
+			if (vout->cur_frm == vout->next_frm)
+				goto vout_isr_err;
+
+			vout->cur_frm->ts = timevalue;
+			vout->cur_frm->state = VIDEOBUF_DONE;
+			wake_up_interruptible(&vout->cur_frm->done);
+			vout->cur_frm = vout->next_frm;
+		} else if (1 == fid) {
+			if (list_empty(&vout->dma_queue) ||
+					(vout->cur_frm != vout->next_frm))
+				goto vout_isr_err;
+
+			vout->next_frm = list_entry(vout->dma_queue.next,
+					struct videobuf_buffer, queue);
+			list_del(&vout->next_frm->queue);
+
+			vout->next_frm->state = VIDEOBUF_ACTIVE;
+			addr = (unsigned long)
+				vout->queued_buf_addr[vout->next_frm->i] +
+				vout->cropped_offset;
+			/* First save the configuration in ovelray structure */
+			ret = omapvid_init(vout, addr);
+			if (ret)
+				printk(KERN_ERR VOUT_NAME
+						"failed to set overlay info\n");
+			/* Enable the pipeline and set the Go bit */
+			ret = omapvid_apply_changes(vout);
+			if (ret)
+				printk(KERN_ERR VOUT_NAME
+						"failed to change mode\n");
+		}
+
 	}
 
 vout_isr_err:
@@ -844,15 +835,6 @@ static void omap_vout_buffer_release(struct videobuf_queue *q,
 /*
  *  File operations
  */
-static unsigned int omap_vout_poll(struct file *file,
-				   struct poll_table_struct *wait)
-{
-	struct omap_vout_device *vout = file->private_data;
-	struct videobuf_queue *q = &vout->vbq;
-
-	return videobuf_poll_stream(file, q, wait);
-}
-
 static void omap_vout_vm_open(struct vm_area_struct *vma)
 {
 	struct omap_vout_device *vout = vma->vm_private_data;
@@ -1184,17 +1166,12 @@ static int vidioc_try_fmt_vid_overlay(struct file *file, void *fh,
 {
 	int ret = 0;
 	struct omap_vout_device *vout = fh;
-	struct omap_overlay *ovl;
-	struct omapvideo_info *ovid;
 	struct v4l2_window *win = &f->fmt.win;
-
-	ovid = &vout->vid_info;
-	ovl = ovid->overlays[0];
 
 	ret = omap_vout_try_window(&vout->fbuf, win);
 
 	if (!ret) {
-		if ((ovl->caps & OMAP_DSS_OVL_CAP_GLOBAL_ALPHA) == 0)
+		if (vout->vid == OMAP_VIDEO1)
 			win->global_alpha = 255;
 		else
 			win->global_alpha = f->fmt.win.global_alpha;
@@ -1218,8 +1195,8 @@ static int vidioc_s_fmt_vid_overlay(struct file *file, void *fh,
 
 	ret = omap_vout_new_window(&vout->crop, &vout->win, &vout->fbuf, win);
 	if (!ret) {
-		/* Video1 plane does not support global alpha on OMAP3 */
-		if ((ovl->caps & OMAP_DSS_OVL_CAP_GLOBAL_ALPHA) == 0)
+		/* Video1 plane does not support global alpha */
+		if (ovl->id == OMAP_DSS_VIDEO1)
 			vout->win.global_alpha = 255;
 		else
 			vout->win.global_alpha = f->fmt.win.global_alpha;
@@ -1640,12 +1617,16 @@ static int vidioc_streamon(struct file *file, void *fh, enum v4l2_buf_type i)
 	if (ret)
 		goto streamon_err;
 
-	/* Get the next frame from the buffer queue */
-	vout->cur_frm = _get_next_frm(vout);
-	if (!vout->cur_frm) {
+	if (list_empty(&vout->dma_queue)) {
 		ret = -EIO;
 		goto streamon_err1;
 	}
+
+	/* Get the next frame from the buffer queue */
+	vout->next_frm = vout->cur_frm = list_entry(vout->dma_queue.next,
+			struct videobuf_buffer, queue);
+	/* Remove buffer from the buffer queue */
+	list_del(&vout->cur_frm->queue);
 	/* Mark state of the current frame to active */
 	vout->cur_frm->state = VIDEOBUF_ACTIVE;
 	/* Initialize field_id and started member */
@@ -1808,9 +1789,7 @@ static int vidioc_s_fbuf(struct file *file, void *fh,
 	if (ovl->manager && ovl->manager->get_manager_info &&
 			ovl->manager->set_manager_info) {
 		ovl->manager->get_manager_info(ovl->manager, &info);
-		/* enable this only if there is no zorder cap */
-		if ((ovl->caps & OMAP_DSS_OVL_CAP_ZORDER) == 0)
-			info.partial_alpha_enabled = enable;
+		info.alpha_enabled = enable;
 		if (ovl->manager->set_manager_info(ovl->manager, &info))
 			return -EINVAL;
 	}
@@ -1842,7 +1821,7 @@ static int vidioc_g_fbuf(struct file *file, void *fh,
 	}
 	if (ovl->manager && ovl->manager->get_manager_info) {
 		ovl->manager->get_manager_info(ovl->manager, &info);
-		if (info.partial_alpha_enabled)
+		if (info.alpha_enabled)
 			a->flags |= V4L2_FBUF_FLAG_LOCAL_ALPHA;
 	}
 
@@ -1877,7 +1856,6 @@ static const struct v4l2_ioctl_ops vout_ioctl_ops = {
 
 static const struct v4l2_file_operations omap_vout_fops = {
 	.owner 		= THIS_MODULE,
-	.poll		= omap_vout_poll,
 	.unlocked_ioctl	= video_ioctl2,
 	.mmap 		= omap_vout_mmap,
 	.open 		= omap_vout_open,
@@ -2241,7 +2219,7 @@ static int __init omap_vout_probe(struct platform_device *pdev)
 	for (i = 0; i < vid_dev->num_displays; i++) {
 		struct omap_dss_device *display = vid_dev->displays[i];
 
-		if (display->driver && display->driver->update)
+		if (display->driver->update)
 			display->driver->update(display, 0, 0,
 					display->panel.timings.x_res,
 					display->panel.timings.y_res);

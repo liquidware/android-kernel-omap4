@@ -1,5 +1,5 @@
 /*
- * hdmi_panel.c
+ * hdmi_omap4_panel.c
  *
  * HDMI library support functions for TI OMAP4 processors.
  *
@@ -25,7 +25,6 @@
 #include <linux/mutex.h>
 #include <linux/module.h>
 #include <video/omapdss.h>
-#include <linux/slab.h>
 
 #include "dss.h"
 
@@ -41,7 +40,13 @@ static int hdmi_panel_probe(struct omap_dss_device *dssdev)
 	dssdev->panel.config = OMAP_DSS_LCD_TFT |
 			OMAP_DSS_LCD_IVS | OMAP_DSS_LCD_IHS;
 
-	dssdev->panel.timings = (struct omap_video_timings){640, 480, 25175, 96, 16, 48, 2 , 11, 31};
+	/*
+	 * Initialize the timings to 640 * 480
+	 * This is only for framebuffer update not for TV timing setting
+	 * Setting TV timing will be done only on enable
+	 */
+	dssdev->panel.timings.x_res = 640;
+	dssdev->panel.timings.y_res = 480;
 
 	DSSDBG("hdmi_panel_probe x_res= %d y_res = %d\n",
 		dssdev->panel.timings.x_res,
@@ -71,8 +76,6 @@ static int hdmi_panel_enable(struct omap_dss_device *dssdev)
 	r = omapdss_hdmi_display_enable(dssdev);
 	if (r) {
 		DSSERR("failed to power on\n");
-		/* swallow the error */
-		r = 0;
 		goto err;
 	}
 
@@ -162,7 +165,12 @@ static void hdmi_set_timings(struct omap_dss_device *dssdev,
 	mutex_lock(&hdmi.hdmi_lock);
 
 	dssdev->panel.timings = *timings;
-	omapdss_hdmi_display_set_timing(dssdev);
+
+	if (dssdev->state == OMAP_DSS_DISPLAY_ACTIVE) {
+		/* turn the hdmi off and on to get new timings to use */
+		omapdss_hdmi_display_disable(dssdev);
+		omapdss_hdmi_display_set_timing(dssdev);
+	}
 
 	mutex_unlock(&hdmi.hdmi_lock);
 }
@@ -177,54 +185,12 @@ static int hdmi_check_timings(struct omap_dss_device *dssdev,
 	mutex_lock(&hdmi.hdmi_lock);
 
 	r = omapdss_hdmi_display_check_timing(dssdev, timings);
-
-	mutex_unlock(&hdmi.hdmi_lock);
-	return r;
-}
-
-static int hdmi_read_edid(struct omap_dss_device *dssdev, u8 *buf, int len)
-{
-	int r;
-
-	mutex_lock(&hdmi.hdmi_lock);
-
-	if (dssdev->state != OMAP_DSS_DISPLAY_ACTIVE) {
-		r = omapdss_hdmi_display_enable(dssdev);
-		if (r)
-			goto err;
+	if (r) {
+		DSSERR("Timing cannot be applied\n");
+		goto err;
 	}
-
-	r = omapdss_hdmi_read_edid(dssdev, buf, len);
-
-	if (dssdev->state == OMAP_DSS_DISPLAY_DISABLED ||
-			dssdev->state == OMAP_DSS_DISPLAY_SUSPENDED)
-		omapdss_hdmi_display_disable(dssdev);
 err:
 	mutex_unlock(&hdmi.hdmi_lock);
-
-	return r;
-}
-
-static bool hdmi_detect(struct omap_dss_device *dssdev)
-{
-	int r;
-
-	mutex_lock(&hdmi.hdmi_lock);
-
-	if (dssdev->state != OMAP_DSS_DISPLAY_ACTIVE) {
-		r = omapdss_hdmi_display_enable(dssdev);
-		if (r)
-			goto err;
-	}
-
-	r = omapdss_hdmi_detect(dssdev);
-
-	if (dssdev->state == OMAP_DSS_DISPLAY_DISABLED ||
-			dssdev->state == OMAP_DSS_DISPLAY_SUSPENDED)
-		omapdss_hdmi_display_disable(dssdev);
-err:
-	mutex_unlock(&hdmi.hdmi_lock);
-
 	return r;
 }
 
@@ -238,8 +204,6 @@ static struct omap_dss_driver hdmi_driver = {
 	.get_timings	= hdmi_get_timings,
 	.set_timings	= hdmi_set_timings,
 	.check_timings	= hdmi_check_timings,
-	.read_edid	= hdmi_read_edid,
-	.detect		= hdmi_detect,
 	.driver			= {
 		.name   = "hdmi_panel",
 		.owner  = THIS_MODULE,

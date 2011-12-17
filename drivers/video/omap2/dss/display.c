@@ -45,12 +45,13 @@ static ssize_t display_enabled_store(struct device *dev,
 		const char *buf, size_t size)
 {
 	struct omap_dss_device *dssdev = to_dss_device(dev);
-	int r;
-	bool enabled;
+	int r, enabled;
 
-	r = strtobool(buf, &enabled);
+	r = kstrtoint(buf, 0, &enabled);
 	if (r)
 		return r;
+
+	enabled = !!enabled;
 
 	if (enabled != (dssdev->state != OMAP_DSS_DISPLAY_DISABLED)) {
 		if (enabled) {
@@ -61,48 +62,6 @@ static ssize_t display_enabled_store(struct device *dev,
 			dssdev->driver->disable(dssdev);
 		}
 	}
-
-	return size;
-}
-
-static ssize_t display_upd_mode_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct omap_dss_device *dssdev = to_dss_device(dev);
-	enum omap_dss_update_mode mode = OMAP_DSS_UPDATE_AUTO;
-	if (dssdev->driver->get_update_mode)
-		mode = dssdev->driver->get_update_mode(dssdev);
-	return snprintf(buf, PAGE_SIZE, "%d\n", mode);
-}
-
-static ssize_t display_upd_mode_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t size)
-{
-	struct omap_dss_device *dssdev = to_dss_device(dev);
-	int val, r;
-	enum omap_dss_update_mode mode;
-
-	if (!dssdev->driver->set_update_mode)
-		return -EINVAL;
-
-	r = kstrtoint(buf, 0, &val);
-	if (r)
-		return r;
-
-	switch (val) {
-	case OMAP_DSS_UPDATE_DISABLED:
-	case OMAP_DSS_UPDATE_AUTO:
-	case OMAP_DSS_UPDATE_MANUAL:
-		mode = (enum omap_dss_update_mode)val;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	r = dssdev->driver->set_update_mode(dssdev, mode);
-	if (r)
-		return r;
 
 	return size;
 }
@@ -120,15 +79,16 @@ static ssize_t display_tear_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	struct omap_dss_device *dssdev = to_dss_device(dev);
-	int r;
-	bool te;
+	int te, r;
 
 	if (!dssdev->driver->enable_te || !dssdev->driver->get_te)
 		return -ENOENT;
 
-	r = strtobool(buf, &te);
+	r = kstrtoint(buf, 0, &te);
 	if (r)
 		return r;
+
+	te = !!te;
 
 	r = dssdev->driver->enable_te(dssdev, te);
 	if (r)
@@ -235,15 +195,16 @@ static ssize_t display_mirror_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	struct omap_dss_device *dssdev = to_dss_device(dev);
-	int r;
-	bool mirror;
+	int mirror, r;
 
 	if (!dssdev->driver->set_mirror || !dssdev->driver->get_mirror)
 		return -ENOENT;
 
-	r = strtobool(buf, &mirror);
+	r = kstrtoint(buf, 0, &mirror);
 	if (r)
 		return r;
+
+	mirror = !!mirror;
 
 	r = dssdev->driver->set_mirror(dssdev, mirror);
 	if (r)
@@ -292,8 +253,6 @@ static ssize_t display_wss_store(struct device *dev,
 
 static DEVICE_ATTR(enabled, S_IRUGO|S_IWUSR,
 		display_enabled_show, display_enabled_store);
-static DEVICE_ATTR(update_mode, S_IRUGO|S_IWUSR,
-		display_upd_mode_show, display_upd_mode_store);
 static DEVICE_ATTR(tear_elim, S_IRUGO|S_IWUSR,
 		display_tear_show, display_tear_store);
 static DEVICE_ATTR(timings, S_IRUGO|S_IWUSR,
@@ -307,7 +266,6 @@ static DEVICE_ATTR(wss, S_IRUGO|S_IWUSR,
 
 static struct device_attribute *display_sysfs_attrs[] = {
 	&dev_attr_enabled,
-	&dev_attr_update_mode,
 	&dev_attr_tear_elim,
 	&dev_attr_timings,
 	&dev_attr_rotate,
@@ -323,16 +281,6 @@ void omapdss_default_get_resolution(struct omap_dss_device *dssdev,
 	*yres = dssdev->panel.timings.y_res;
 }
 EXPORT_SYMBOL(omapdss_default_get_resolution);
-
-bool omapdss_default_detect(struct omap_dss_device *dssdev)
-{
-	if (dssdev->state == OMAP_DSS_DISPLAY_SUSPENDED)
-		/* show resume info for suspended displays */
-		return dssdev->activate_after_resume;
-	else
-		return dssdev->state != OMAP_DSS_DISPLAY_DISABLED;
-}
-EXPORT_SYMBOL(omapdss_default_detect);
 
 void default_get_overlay_fifo_thresholds(enum omap_plane plane,
 		u32 fifo_size, u32 burst_size,
@@ -354,12 +302,8 @@ int omapdss_default_get_recommended_bpp(struct omap_dss_device *dssdev)
 			return 16;
 
 	case OMAP_DISPLAY_TYPE_DBI:
-		if (dssdev->ctrl.pixel_size == 24)
-			return 24;
-		else
-			return 16;
 	case OMAP_DISPLAY_TYPE_DSI:
-		if (dsi_get_pixel_size(dssdev->panel.dsi_pix_fmt) > 16)
+		if (dssdev->ctrl.pixel_size == 24)
 			return 24;
 		else
 			return 16;
@@ -398,10 +342,8 @@ bool dss_use_replication(struct omap_dss_device *dssdev,
 		bpp = 24;
 		break;
 	case OMAP_DISPLAY_TYPE_DBI:
-		bpp = dssdev->ctrl.pixel_size;
-		break;
 	case OMAP_DISPLAY_TYPE_DSI:
-		bpp = dsi_get_pixel_size(dssdev->panel.dsi_pix_fmt);
+		bpp = dssdev->ctrl.pixel_size;
 		break;
 	default:
 		BUG();
