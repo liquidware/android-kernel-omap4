@@ -2141,6 +2141,7 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 	 * too large.
 	 */
 	if (order >= MAX_ORDER) {
+		pr_err("__alloc_pages_slowpath: %u > MAX_ORDER (%u)\n", order, MAX_ORDER);
 		WARN_ON_ONCE(!(gfp_mask & __GFP_NOWARN));
 		return NULL;
 	}
