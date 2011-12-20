@@ -62,6 +62,9 @@ static struct {
 	struct platform_device *pdev;
 	void __iomem    *base;
 
+	struct mutex	runtime_lock;
+	int		runtime_count;
+
 	struct clk	*dpll4_m4_ck;
 	struct clk	*dss_clk;
 
@@ -700,21 +703,49 @@ int dss_runtime_get(void)
 {
 	int r;
 
-	DSSDBG("dss_runtime_get\n");
+	mutex_lock(&dss.runtime_lock);
 
-	r = pm_runtime_get_sync(&dss.pdev->dev);
-	WARN_ON(r < 0);
-	return r < 0 ? r : 0;
+	if (dss.runtime_count++ == 0) {
+		DSSDBG("dss_runtime_get\n");
+
+		clk_enable(dss.dss_clk);
+
+		r = pm_runtime_get_sync(&dss.pdev->dev);
+		WARN_ON(r);
+		if (r < 0)
+			goto err;
+
+		dss_restore_context();
+	}
+
+	mutex_unlock(&dss.runtime_lock);
+
+	return 0;
+
+err:
+	clk_disable(dss.dss_clk);
+	mutex_unlock(&dss.runtime_lock);
+	return r;
 }
 
 void dss_runtime_put(void)
 {
-	int r;
+	mutex_lock(&dss.runtime_lock);
 
-	DSSDBG("dss_runtime_put\n");
+	if (--dss.runtime_count == 0) {
+		int r;
 
-	r = pm_runtime_put(&dss.pdev->dev);
-	WARN_ON(r < 0);
+		DSSDBG("dss_runtime_put\n");
+
+		dss_save_context();
+
+		r = pm_runtime_put_sync(&dss.pdev->dev);
+		WARN_ON(r);
+
+		clk_disable(dss.dss_clk);
+	}
+
+	mutex_unlock(&dss.runtime_lock);
 }
 
 /* DEBUGFS */
@@ -754,6 +785,8 @@ static int omap_dsshw_probe(struct platform_device *pdev)
 	r = dss_get_clocks();
 	if (r)
 		goto err_clocks;
+
+	mutex_init(&dss.runtime_lock);
 
 	pm_runtime_enable(&pdev->dev);
 

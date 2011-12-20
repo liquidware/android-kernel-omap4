@@ -270,6 +270,9 @@ struct dsi_data {
 	struct platform_device *pdev;
 	void __iomem	*base;
 
+	struct mutex	runtime_lock;
+	int		runtime_count;
+
 	int irq;
 
 	struct clk *dss_clk;
@@ -1050,22 +1053,64 @@ int dsi_runtime_get(struct platform_device *dsidev)
 	int r;
 	struct dsi_data *dsi = dsi_get_dsidrv_data(dsidev);
 
-	DSSDBG("dsi_runtime_get\n");
+	mutex_lock(&dsi->runtime_lock);
 
-	r = pm_runtime_get_sync(&dsi->pdev->dev);
-	WARN_ON(r < 0);
-	return r < 0 ? r : 0;
+	if (dsi->runtime_count++ == 0) {
+		DSSDBG("dsi_runtime_get\n");
+
+		r = dss_runtime_get();
+		if (r)
+			goto err_get_dss;
+
+		r = dispc_runtime_get();
+		if (r)
+			goto err_get_dispc;
+
+		/* XXX dsi fclk can also come from DSI PLL */
+		clk_enable(dsi->dss_clk);
+
+		r = pm_runtime_get_sync(&dsi->pdev->dev);
+		WARN_ON(r);
+		if (r < 0)
+			goto err_runtime_get;
+	}
+
+	mutex_unlock(&dsi->runtime_lock);
+
+	return 0;
+
+err_runtime_get:
+	clk_disable(dsi->dss_clk);
+	dispc_runtime_put();
+err_get_dispc:
+	dss_runtime_put();
+err_get_dss:
+	mutex_unlock(&dsi->runtime_lock);
+
+	return r;
 }
 
 void dsi_runtime_put(struct platform_device *dsidev)
 {
 	struct dsi_data *dsi = dsi_get_dsidrv_data(dsidev);
-	int r;
 
-	DSSDBG("dsi_runtime_put\n");
+	mutex_lock(&dsi->runtime_lock);
 
-	r = pm_runtime_put(&dsi->pdev->dev);
-	WARN_ON(r < 0);
+	if (--dsi->runtime_count == 0) {
+		int r;
+
+		DSSDBG("dsi_runtime_put\n");
+
+		r = pm_runtime_put_sync(&dsi->pdev->dev);
+		WARN_ON(r);
+
+		clk_disable(dsi->dss_clk);
+
+		dispc_runtime_put();
+		dss_runtime_put();
+	}
+
+	mutex_unlock(&dsi->runtime_lock);
 }
 
 /* source clock for DSI PLL. this could also be PCLKFREE */
@@ -4733,6 +4778,8 @@ static int omap_dsi1hw_probe(struct platform_device *dsidev)
 	r = dsi_get_clocks(dsidev);
 	if (r)
 		goto err_get_clk;
+
+	mutex_init(&dsi->runtime_lock);
 
 	pm_runtime_enable(&dsidev->dev);
 

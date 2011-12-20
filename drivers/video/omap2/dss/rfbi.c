@@ -128,9 +128,27 @@ static int rfbi_runtime_get(void)
 
 	DSSDBG("rfbi_runtime_get\n");
 
+	r = dss_runtime_get();
+	if (r)
+		goto err_get_dss;
+
+	r = dispc_runtime_get();
+	if (r)
+		goto err_get_dispc;
+
 	r = pm_runtime_get_sync(&rfbi.pdev->dev);
-	WARN_ON(r < 0);
-	return r < 0 ? r : 0;
+	WARN_ON(r);
+	if (r < 0)
+		goto err_runtime_get;
+
+	return 0;
+
+err_runtime_get:
+	dispc_runtime_put();
+err_get_dispc:
+	dss_runtime_put();
+err_get_dss:
+	return r;
 }
 
 static void rfbi_runtime_put(void)
@@ -139,8 +157,11 @@ static void rfbi_runtime_put(void)
 
 	DSSDBG("rfbi_runtime_put\n");
 
-	r = pm_runtime_put(&rfbi.pdev->dev);
-	WARN_ON(r < 0);
+	r = pm_runtime_put_sync(&rfbi.pdev->dev);
+	WARN_ON(r);
+
+	dispc_runtime_put();
+	dss_runtime_put();
 }
 
 void rfbi_bus_lock(void)

@@ -90,6 +90,8 @@ static struct {
 	void __iomem    *base;
 
 	int		ctx_loss_cnt;
+	struct mutex	runtime_lock;
+	int		runtime_count;
 
 	int irq;
 	struct clk *dss_clk;
@@ -517,21 +519,59 @@ int dispc_runtime_get(void)
 {
 	int r;
 
-	DSSDBG("dispc_runtime_get\n");
+	mutex_lock(&dispc.runtime_lock);
 
-	r = pm_runtime_get_sync(&dispc.pdev->dev);
-	WARN_ON(r < 0);
-	return r < 0 ? r : 0;
+	if (dispc.runtime_count++ == 0) {
+		DSSDBG("dispc_runtime_get\n");
+
+		r = dss_runtime_get();
+		if (r)
+			goto err_dss_get;
+
+		/* XXX dispc fclk can also come from DSI PLL */
+		clk_enable(dispc.dss_clk);
+
+		r = pm_runtime_get_sync(&dispc.pdev->dev);
+		WARN_ON(r);
+		if (r < 0)
+			goto err_runtime_get;
+
+		dispc_restore_context();
+	}
+
+	mutex_unlock(&dispc.runtime_lock);
+
+	return 0;
+
+err_runtime_get:
+	clk_disable(dispc.dss_clk);
+	dss_runtime_put();
+err_dss_get:
+	mutex_unlock(&dispc.runtime_lock);
+
+	return r;
 }
 
 void dispc_runtime_put(void)
 {
-	int r;
+	mutex_lock(&dispc.runtime_lock);
 
-	DSSDBG("dispc_runtime_put\n");
+	if (--dispc.runtime_count == 0) {
+		int r;
 
-	r = pm_runtime_put(&dispc.pdev->dev);
-	WARN_ON(r < 0);
+		DSSDBG("dispc_runtime_put\n");
+
+		dispc_save_context();
+
+		r = pm_runtime_put_sync(&dispc.pdev->dev);
+		WARN_ON(r);
+
+		clk_disable(dispc.dss_clk);
+
+		dss_runtime_put();
+	}
+
+	mutex_unlock(&dispc.runtime_lock);
 }
 
 
@@ -3992,6 +4032,8 @@ static int omap_dispchw_probe(struct platform_device *pdev)
 		DSSERR("request_irq failed\n");
 		goto err_irq;
 	}
+
+	mutex_init(&dispc.runtime_lock);
 
 	pm_runtime_enable(&pdev->dev);
 

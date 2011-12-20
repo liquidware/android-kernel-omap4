@@ -44,6 +44,7 @@
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
 #endif
+#include <plat/omap_hwmod.h>
 
 #include "dss.h"
 #include "dss_features.h"
@@ -82,7 +83,8 @@ static struct {
 	struct regulator *hdmi_reg;
 
 	struct clk *sys_clk;
-	struct clk *hdmi_clk;
+
+	int runtime_count;
 	int enabled;
 } hdmi;
 
@@ -94,9 +96,32 @@ static int hdmi_runtime_get(void)
 
 	DSSDBG("hdmi_runtime_get\n");
 
-	r = pm_runtime_get_sync(&hdmi.pdev->dev);
-	WARN_ON(r < 0);
-	return r < 0 ? r : 0;
+	if (hdmi.runtime_count++ == 0) {
+		r = dss_runtime_get();
+		if (r)
+			goto err_get_dss;
+
+		r = dispc_runtime_get();
+		if (r)
+			goto err_get_dispc;
+
+		clk_enable(hdmi.sys_clk);
+
+		r = pm_runtime_get_sync(&hdmi.pdev->dev);
+		WARN_ON(r);
+		if (r < 0)
+			goto err_runtime_get;
+	}
+
+	return 0;
+
+err_runtime_get:
+	clk_disable(hdmi.sys_clk);
+	dispc_runtime_put();
+err_get_dispc:
+	dss_runtime_put();
+err_get_dss:
+	return r;
 }
 
 static void hdmi_runtime_put(void)
@@ -105,8 +130,15 @@ static void hdmi_runtime_put(void)
 
 	DSSDBG("hdmi_runtime_put\n");
 
-	r = pm_runtime_put(&hdmi.pdev->dev);
-	WARN_ON(r < 0);
+	if (--hdmi.runtime_count == 0) {
+		r = pm_runtime_put_sync(&hdmi.pdev->dev);
+		WARN_ON(r);
+
+		clk_disable(hdmi.sys_clk);
+
+		dispc_runtime_put();
+		dss_runtime_put();
+	}
 }
 
 int hdmi_init_display(struct omap_dss_device *dssdev)
@@ -791,15 +823,6 @@ static int hdmi_get_clocks(struct platform_device *pdev)
 
 	hdmi.sys_clk = clk;
 
-	clk = clk_get(&pdev->dev, "dss_48mhz_clk");
-	if (IS_ERR(clk)) {
-		DSSERR("can't get hdmi_clk\n");
-		clk_put(hdmi.sys_clk);
-		return PTR_ERR(clk);
-	}
-
-	hdmi.hdmi_clk = clk;
-
 	return 0;
 }
 
@@ -807,8 +830,6 @@ static void hdmi_put_clocks(void)
 {
 	if (hdmi.sys_clk)
 		clk_put(hdmi.sys_clk);
-	if (hdmi.hdmi_clk)
-		clk_put(hdmi.hdmi_clk);
 }
 
 /* HDMI HW IP initialisation */
@@ -917,7 +938,6 @@ static int omapdss_hdmihw_remove(struct platform_device *pdev)
 
 static int hdmi_runtime_suspend(struct device *dev)
 {
-	clk_disable(hdmi.hdmi_clk);
 	clk_disable(hdmi.sys_clk);
 
 	dispc_runtime_put();
@@ -939,7 +959,6 @@ static int hdmi_runtime_resume(struct device *dev)
 		goto err_get_dispc;
 
 	clk_enable(hdmi.sys_clk);
-	clk_enable(hdmi.hdmi_clk);
 
 	return 0;
 

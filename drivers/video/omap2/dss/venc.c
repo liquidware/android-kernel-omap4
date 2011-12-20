@@ -295,6 +295,9 @@ static struct {
 	u32 wss_data;
 	struct regulator *vdda_dac_reg;
 
+	struct mutex	runtime_lock;
+	int		runtime_count;
+
 	struct clk	*tv_clk;
 	struct clk	*tv_dac_clk;
 } venc;
@@ -389,21 +392,67 @@ static int venc_runtime_get(void)
 {
 	int r;
 
-	DSSDBG("venc_runtime_get\n");
+	mutex_lock(&venc.runtime_lock);
 
-	r = pm_runtime_get_sync(&venc.pdev->dev);
-	WARN_ON(r < 0);
-	return r < 0 ? r : 0;
+	if (venc.runtime_count++ == 0) {
+		DSSDBG("venc_runtime_get\n");
+
+		r = dss_runtime_get();
+		if (r)
+			goto err_get_dss;
+
+		r = dispc_runtime_get();
+		if (r)
+			goto err_get_dispc;
+
+		clk_enable(venc.tv_clk);
+		if (venc.tv_dac_clk)
+			clk_enable(venc.tv_dac_clk);
+
+		r = pm_runtime_get_sync(&venc.pdev->dev);
+		WARN_ON(r);
+		if (r < 0)
+			goto err_runtime_get;
+	}
+
+	mutex_unlock(&venc.runtime_lock);
+
+	return 0;
+
+err_runtime_get:
+	clk_disable(venc.tv_clk);
+	if (venc.tv_dac_clk)
+		clk_disable(venc.tv_dac_clk);
+	dispc_runtime_put();
+err_get_dispc:
+	dss_runtime_put();
+err_get_dss:
+	mutex_unlock(&venc.runtime_lock);
+
+	return r;
 }
 
 static void venc_runtime_put(void)
 {
-	int r;
+	mutex_lock(&venc.runtime_lock);
 
-	DSSDBG("venc_runtime_put\n");
+	if (--venc.runtime_count == 0) {
+		int r;
 
-	r = pm_runtime_put(&venc.pdev->dev);
-	WARN_ON(r < 0);
+		DSSDBG("venc_runtime_put\n");
+
+		r = pm_runtime_put_sync(&venc.pdev->dev);
+		WARN_ON(r);
+
+		clk_disable(venc.tv_clk);
+		if (venc.tv_dac_clk)
+			clk_disable(venc.tv_dac_clk);
+
+		dispc_runtime_put();
+		dss_runtime_put();
+	}
+
+	mutex_unlock(&venc.runtime_lock);
 }
 
 static const struct venc_config *venc_timings_to_config(
@@ -814,6 +863,7 @@ static int omap_venchw_probe(struct platform_device *pdev)
 	if (r)
 		goto err_get_clk;
 
+	mutex_init(&venc.runtime_lock);
 	pm_runtime_enable(&pdev->dev);
 
 	r = venc_runtime_get();
