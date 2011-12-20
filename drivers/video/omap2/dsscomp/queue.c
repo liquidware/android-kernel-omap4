@@ -592,8 +592,6 @@ skip_ovl_set:
 		r = -ENODEV;
 	} else {
 		r = mgr->apply(mgr);
-		if (r)
-			dev_err(DEV(cdev), "failed while applying %d", r);
 		/* keep error if set_mgr_info failed */
 		if (!r && !cb_programmed)
 			r = -EINVAL;

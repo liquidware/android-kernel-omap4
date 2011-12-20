@@ -586,6 +586,9 @@ struct manager_cache_data {
 	bool enlarge_update_area;
 
 	struct callback_states cb; /* callback data for the last 3 states */
+
+	bool cpr_enable;
+	struct omap_dss_cpr_coefs cpr_coefs;
 	bool skip_init;
 };
 
@@ -1110,10 +1113,9 @@ static void configure_manager(enum omap_channel channel)
 	} else {
 		dispc_enable_alpha_blending(channel, c->alpha_enabled);
 	}
-
 	if (dss_has_feature(FEAT_CPR)) {
-		dispc_enable_cpr(channel, mi->cpr_enable);
-		dispc_set_cpr_coef(channel, &mi->cpr_coefs);
+		dispc_enable_cpr(channel, c->cpr_enable);
+		dispc_set_cpr_coef(channel, &c->cpr_coefs);
 	}
 }
 
@@ -1638,11 +1640,8 @@ static int omap_dss_mgr_blank(struct omap_overlay_manager *mgr,
 		dss_cache.irq_enabled = true;
 	}
 
-	if (!r_get) {
+	if (!r_get)
 		r = configure_dispc();
-		if (r)
-			pr_info("mgr_blank while GO is set");
-	}
 
 	if (r_get || !wait_for_go) {
 		/* pretend that programming has happened */
@@ -1722,8 +1721,6 @@ static int omap_dss_mgr_apply(struct omap_overlay_manager *mgr)
 	spin_lock_irqsave(&dss_cache.lock, flags);
 
 	if (!mgr->device || mgr->device->state != OMAP_DSS_DISPLAY_ACTIVE) {
-		pr_info_ratelimited("cannot apply mgr(%s) on inactive device\n",
-								mgr->name);
 		r = -ENODEV;
 		goto done;
 	}
@@ -1847,6 +1844,8 @@ static int omap_dss_mgr_apply(struct omap_overlay_manager *mgr)
 	mc->trans_key = mgr->info.trans_key;
 	mc->trans_enabled = mgr->info.trans_enabled;
 	mc->alpha_enabled = mgr->info.alpha_enabled;
+	mc->cpr_coefs = mgr->info.cpr_coefs;
+	mc->cpr_enable = mgr->info.cpr_enable;
 
 	mc->manual_upd_display =
 		dssdev->caps & OMAP_DSS_DISPLAY_CAP_MANUAL_UPDATE;
