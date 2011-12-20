@@ -281,7 +281,7 @@ static int hdmi_core_ddc_edid(struct hdmi_ip_data *ip_data,
 	 * right shifted values( The behavior is not consistent and seen only
 	 * with some TV's)
 	 */
-	usleep_range(800, 1000);
+	msleep(300);
 
 	if (!ext) {
 		/* Clk SCL Devices */
