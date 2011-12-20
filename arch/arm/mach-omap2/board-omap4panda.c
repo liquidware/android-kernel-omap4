@@ -31,9 +31,11 @@
 #include <linux/netdevice.h>
 #include <linux/if_ether.h>
 #include <linux/ti_wilink_st.h>
+#include <linux/omapfb.h>
 
 #include <mach/hardware.h>
 #include <mach/omap4-common.h>
+#include <mach/dmm.h>
 #include <mach/id.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -44,7 +46,6 @@
 #include <plat/common.h>
 #include <plat/usb.h>
 #include <plat/mmc.h>
-#include <video/omap-panel-dvi.h>
 #include <plat/dma-44xx.h>
 #include <video/omap-panel-generic-dpi.h>
 
@@ -58,7 +59,8 @@
 #define GPIO_HUB_NRESET		62
 #define GPIO_WIFI_PMENA		43
 #define GPIO_WIFI_IRQ		53
-#define HDMI_GPIO_HPD 60 /* Hot plug pin for HDMI */
+#define HDMI_GPIO_CT_CP_HPD     60
+#define HDMI_GPIO_HPD 63 /* Hot plug pin for HDMI */
 #define HDMI_GPIO_LS_OE 41 /* Level shifter for HDMI */
 #define TPS62361_GPIO   7
 
@@ -134,30 +136,9 @@ static void __init panda_leds_init(void)
 	platform_device_register(&leds_gpio);
 }
 
-static struct resource omap4panda_hdmi_resources[] = {
-        [0] = {                                                                 
-                .start = OMAP44XX_DSS_HDMI_L3_BASE,                                        
-                .end   = OMAP44XX_DSS_HDMI_L3_BASE + SZ_4M - 1,                           
-                .flags = IORESOURCE_MEM,                                        
-        },                                                                      
-        [1] = {                                                                 
-                .start = OMAP44XX_DMA_DSS_HDMI_REQ,                                                
-                .end   = OMAP44XX_DMA_DSS_HDMI_REQ,                              
-                .flags = IORESOURCE_DMA,                                        
-        }, 
-};
-
-static struct platform_device omap4panda_hdmi_audio_device = {
-	.name	= "hdmi-audio-dai",
-	.id	= -1,
-	.num_resources = ARRAY_SIZE(omap4panda_hdmi_resources),
-	.resource = omap4panda_hdmi_resources,
-};
-
 static struct platform_device *panda_devices[] __initdata = {
 	&wl1271_device,
 	&btwilink_device,
-	&omap4panda_hdmi_audio_device,
 };
 
 static const struct usbhs_omap_board_data usbhs_bdata __initconst = {
@@ -572,16 +553,16 @@ static void omap4_panda_disable_dvi(struct omap_dss_device *dssdev)
 }
 
 /* Using generic display panel */
-static struct panel_dvi_platform_data omap4_dvi_panel = {
+static struct panel_generic_dpi_data omap4_dvi_panel = {
+	.name			= "generic_720p",
 	.platform_enable	= omap4_panda_enable_dvi,
 	.platform_disable	= omap4_panda_disable_dvi,
-	.i2c_bus_num = 3,
 };
 
 struct omap_dss_device omap4_panda_dvi_device = {
 	.type			= OMAP_DISPLAY_TYPE_DPI,
 	.name			= "dvi",
-	.driver_name		= "dvi",
+	.driver_name		= "generic_dpi_panel",
 	.data			= &omap4_dvi_panel,
 	.phy.dpi.data_lines	= 24,
 	.reset_gpio		= PANDA_DVI_TFP410_POWER_DOWN_GPIO,
@@ -601,36 +582,56 @@ int __init omap4_panda_dvi_init(void)
 	return r;
 }
 
-
 static struct gpio panda_hdmi_gpios[] = {
-	{ HDMI_GPIO_HPD,	GPIOF_OUT_INIT_HIGH, "hdmi_gpio_hpd"   },
+	{ HDMI_GPIO_CT_CP_HPD,	GPIOF_OUT_INIT_HIGH, "hdmi_gpio_hpd"   },
 	{ HDMI_GPIO_LS_OE,	GPIOF_OUT_INIT_HIGH, "hdmi_gpio_ls_oe" },
 };
 
-static int omap4_panda_panel_enable_hdmi(struct omap_dss_device *dssdev)
+static void omap4_panda_hdmi_mux_init(void)
 {
+	u32 r;
 	int status;
+	/* PAD0_HDMI_HPD_PAD1_HDMI_CEC */
+	omap_mux_init_signal("hdmi_hpd.hdmi_hpd",
+				OMAP_PIN_INPUT_PULLUP);
+	omap_mux_init_signal("gpmc_wait2.gpio_100",
+			OMAP_PIN_INPUT_PULLDOWN);
+	omap_mux_init_signal("hdmi_cec.hdmi_cec",
+			OMAP_PIN_INPUT_PULLUP);
+	/* PAD0_HDMI_DDC_SCL_PAD1_HDMI_DDC_SDA */
+	omap_mux_init_signal("hdmi_ddc_scl.hdmi_ddc_scl",
+			OMAP_PIN_INPUT_PULLUP);
+	omap_mux_init_signal("hdmi_ddc_sda.hdmi_ddc_sda",
+			OMAP_PIN_INPUT_PULLUP);
+
+	/* strong pullup on DDC lines using unpublished register */
+	r = ((1 << 24) | (1 << 28)) ;
+	omap4_ctrl_pad_writel(r, OMAP4_CTRL_MODULE_PAD_CORE_CONTROL_I2C_1);
+
+	gpio_request(HDMI_GPIO_HPD, NULL);
+	omap_mux_init_gpio(HDMI_GPIO_HPD, OMAP_PIN_INPUT | OMAP_PULL_ENA);
+	gpio_direction_input(HDMI_GPIO_HPD);
 
 	status = gpio_request_array(panda_hdmi_gpios,
 				    ARRAY_SIZE(panda_hdmi_gpios));
 	if (status)
 		pr_err("Cannot request HDMI GPIOs\n");
-
-	return status;
-}
-
-static void omap4_panda_panel_disable_hdmi(struct omap_dss_device *dssdev)
-{
-	gpio_free(HDMI_GPIO_LS_OE);
-	gpio_free(HDMI_GPIO_HPD);
 }
 
 static struct omap_dss_device  omap4_panda_hdmi_device = {
 	.name = "hdmi",
 	.driver_name = "hdmi_panel",
 	.type = OMAP_DISPLAY_TYPE_HDMI,
-	.platform_enable = omap4_panda_panel_enable_hdmi,
-	.platform_disable = omap4_panda_panel_disable_hdmi,
+	.clocks	= {
+		.dispc	= {
+			.dispc_fclk_src	= OMAP_DSS_CLK_SRC_FCK,
+		},
+		.hdmi	= {
+			.regn	= 15,
+			.regm2	= 1,
+		},
+	},
+	.hpd_gpio = HDMI_GPIO_HPD,
 	.channel = OMAP_DSS_CHANNEL_DIGIT,
 };
 
@@ -653,20 +654,8 @@ void omap4_panda_display_init(void)
 	if (r)
 		pr_err("error initializing panda DVI\n");
 
-       /*                                                                      
-        * CONTROL_I2C_1: HDMI_DDC_SDA_PULLUPRESX (bit 28) and                  
-        * HDMI_DDC_SCL_PULLUPRESX (bit 24) are set to disable                  
-        * internal pull up resistor - This is a change needed in               
-        * OMAP4460 and OMAP4430 ES2.3 as the external pull up                  
-        * are present. This is needed to avoid EDID read failure.              
-        */                                                                     
-       if (cpu_is_omap446x() || (omap_rev() > OMAP4430_REV_ES2_2))             
-               omap_hdmi_enable_pads(1);                                       
-       else                                                                    
-               omap_hdmi_enable_pads(0); 
-
+	omap4_panda_hdmi_mux_init();
 	omap_display_init(&omap4_panda_dss_data);
-
 }
 
 /*
@@ -753,6 +742,18 @@ static struct notifier_block omap_panda_netdev_notifier = {
 	.priority = 1,
 };
 
+#define PANDA_FB_RAM_SIZE                SZ_16M /* 1920×1080*4 * 2 */
+static struct omapfb_platform_data panda_fb_pdata = {
+	.mem_desc = {
+		.region_cnt = 1,
+		.region = {
+			[0] = {
+				.size = PANDA_FB_RAM_SIZE,
+			},
+		},
+	},
+};
+
 static void __init omap4_panda_init(void)
 {
 	int status;
@@ -786,6 +787,8 @@ static void __init omap4_panda_init(void)
 	omap4_twl6030_hsmmc_init(mmc);
 	omap4_ehci_init();
 	usb_musb_init(&musb_board_data);
+	omap_dmm_init();
+	omapfb_set_platform_data(&panda_fb_pdata);
 	omap4_panda_display_init();
 
 	if (cpu_is_omap446x()) {
