@@ -684,6 +684,7 @@ struct twl4030_vibra_data {
 };
 
 struct twl4030_audio_data {
+	char * audio_card_name;
 	unsigned int	audio_mclk;
 	struct twl4030_codec_data *codec;
 	struct twl4030_vibra_data *vibra;

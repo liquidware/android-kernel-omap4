@@ -408,6 +408,8 @@ static int sdp4430_set_pdm_dl1_gains(struct snd_soc_dapm_context *dapm)
 	return omap_abe_set_dl1_output(output);
 }
 
+static struct snd_soc_card snd_soc_sdp4430;
+
 static int sdp4430_twl6040_init(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_soc_codec *codec = rtd->codec;
@@ -415,6 +417,8 @@ static int sdp4430_twl6040_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	int hsotrim, left_offset, right_offset, mode;
 	int ret;
+
+	snd_soc_sdp4430.name = twl6040->platform_card_name;
 
 	/* Add SDP4430 specific controls */
 	ret = snd_soc_add_controls(codec, sdp4430_controls,
@@ -1004,6 +1008,7 @@ static struct snd_soc_dai_link sdp4430_dai[] = {
 
 /* Audio machine driver */
 static struct snd_soc_card snd_soc_sdp4430 = {
+	.name = "sdp4430-defname",
 	.driver_name = "OMAP4",
 	.long_name = "TI OMAP4 Board",
 	.dai_link = sdp4430_dai,
@@ -1019,15 +1024,7 @@ static int __init sdp4430_soc_init(void)
 {
 	int ret;
 
-	if (!machine_is_omap_4430sdp() && !machine_is_omap4_panda()) {
-		pr_debug("Not SDP4430 or PandaBoard!\n");
-		return -ENODEV;
-	}
 	printk(KERN_INFO "SDP4430 SoC init\n");
-	if (machine_is_omap_4430sdp())
-		snd_soc_sdp4430.name = "SDP4430";
-	else if (machine_is_omap4_panda())
-		snd_soc_sdp4430.name = "Panda";
 
 	sdp4430_snd_device = platform_device_alloc("soc-audio", -1);
 	if (!sdp4430_snd_device) {
@@ -1063,7 +1060,7 @@ static int __init sdp4430_soc_init(void)
 		sdp4430_tps6130x_configure();
 
 	twl6040_codec = snd_soc_card_get_codec(&snd_soc_sdp4430,
-					"twl6040-codec");
+                                        "twl6040-codec");
 
 	return 0;
 

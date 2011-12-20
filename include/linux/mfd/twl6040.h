@@ -208,6 +208,8 @@ struct twl6040 {
 	unsigned int irq_base;
 	u8 irq_masks_cur;
 	u8 irq_masks_cache;
+
+	char platform_card_name[16];
 };
 
 int twl6040_reg_read(struct twl6040 *twl6040, unsigned int reg);

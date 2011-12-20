@@ -339,6 +339,7 @@ static struct twl4030_vibra_data twl6040_vibra = {
 };
 
 static struct twl4030_audio_data twl6040_audio = {
+	.audio_card_name = "Panda",
 	.codec		= &twl6040_codec,
 	.vibra		= &twl6040_vibra,
 	.audpwron_gpio	= 127,
@@ -753,6 +754,9 @@ static void __init omap4_panda_init(void)
 {
 	int status;
 	int package = OMAP_PACKAGE_CBS;
+
+	if (cpu_is_omap446x())
+		twl6040_audio.audio_card_name = "PandaES";
 
 	if (omap_rev() == OMAP4430_REV_ES1_0)
 		package = OMAP_PACKAGE_CBL;

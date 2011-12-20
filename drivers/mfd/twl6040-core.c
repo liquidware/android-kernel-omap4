@@ -495,6 +495,10 @@ static int __devinit twl6040_probe(struct platform_device *pdev)
 	twl6040->dev = &pdev->dev;
 	twl6040->irq = pdata->naudint_irq;
 	twl6040->irq_base = pdata->irq_base;
+	strncpy(twl6040->platform_card_name, pdata->audio_card_name,
+				sizeof twl6040->platform_card_name - 1);
+	twl6040->platform_card_name[sizeof twl6040->platform_card_name - 1] =
+									  '\0';
 
 	mutex_init(&twl6040->mutex);
 	mutex_init(&twl6040->io_mutex);

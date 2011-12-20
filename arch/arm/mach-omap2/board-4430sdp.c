@@ -616,6 +616,7 @@ static struct twl4030_vibra_data twl6040_vibra = {
 };
 
 static struct twl4030_audio_data twl6040_audio = {
+	.audio_card_name = "SDP4430",
 	.codec		= &twl6040_codec,
 	.vibra		= &twl6040_vibra,
 	.audpwron_gpio	= 127,
