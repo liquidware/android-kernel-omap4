@@ -155,6 +155,12 @@ static struct twl4030_usb_data omap4_usb_pdata = {
 	.phy_suspend	= omap4430_phy_suspend,
 };
 
+static struct regulator_consumer_supply omap4_vdda_dac_supplies[] = {
+	{
+		.supply = "hdmi_vref",
+	},
+};
+
 static struct regulator_init_data omap4_vdac_idata = {
 	.constraints = {
 		.min_uV			= 1800000,
@@ -164,6 +170,8 @@ static struct regulator_init_data omap4_vdac_idata = {
 		.valid_ops_mask		= REGULATOR_CHANGE_MODE
 					| REGULATOR_CHANGE_STATUS,
 	},
+	.num_consumer_supplies	= ARRAY_SIZE(omap4_vdda_dac_supplies),
+	.consumer_supplies	= omap4_vdda_dac_supplies,
 };
 
 static struct regulator_init_data omap4_vaux2_idata = {
