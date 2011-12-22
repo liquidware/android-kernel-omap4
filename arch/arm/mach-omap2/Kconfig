@@ -52,6 +52,7 @@ config ARCH_OMAP4
 	select USB_ARCH_HAS_EHCI
 	select ARM_CPU_SUSPEND if PM
 	select ARCH_HAS_BARRIERS
+	select ZONE_DMA	
 
 comment "OMAP Core Type"
 	depends on ARCH_OMAP2
