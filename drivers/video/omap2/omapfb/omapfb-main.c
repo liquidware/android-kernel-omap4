@@ -2450,10 +2450,6 @@ static int omapfb_probe(struct platform_device *pdev)
 			dev_warn(&pdev->dev, "cannot parse default modes\n");
 	}
 
-	r = omapfb_create_framebuffers(fbdev);
-	if (r)
-		goto cleanup;
-
 	for (i = 0; i < fbdev->num_managers; i++) {
 		struct omap_overlay_manager *mgr;
 		mgr = fbdev->managers[i];
@@ -2483,6 +2479,10 @@ static int omapfb_probe(struct platform_device *pdev)
 			goto cleanup;
 		}
 	}
+
+	r = omapfb_create_framebuffers(fbdev);
+	if (r)
+		goto cleanup;
 
 	DBG("create sysfs for fbs\n");
 	r = omapfb_create_sysfs(fbdev);

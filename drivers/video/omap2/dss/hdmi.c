@@ -325,6 +325,58 @@ static void hdmi_compute_pll(struct omap_dss_device *dssdev, int phy,
 	DSSDBG("range = %d sd = %d\n", pi->dcofreq, pi->regsd);
 }
 
+int get_best_res(struct fb_monspecs *specs)
+{
+	struct fb_videomode *mode;
+	int i, ret = -1;
+	u32 xres = 0, yres = 0, diff = -1, ref = 0;
+
+	for (i = 0; i < specs->modedb_len; i++) {
+		u32 d;
+
+		mode = &specs->modedb[i];
+
+		if (mode->xres >= xres && mode->yres >= yres) {
+			d = (mode->xres - xres) +
+				(mode->yres - yres);
+			if (diff > d) {
+				diff = d;
+				xres = mode->xres;
+				yres = mode->yres;
+				ref = mode->refresh;
+				ret = i;
+			} else if (diff == d && ret != -1 &&
+				   mode->refresh > ref) {
+				xres = mode->xres;
+				yres = mode->yres;
+				ref = mode->refresh;
+				ret = i;
+			}
+		}
+	}
+
+	return ret;
+}
+
+void hdmi_set_best_default(struct omap_dss_device *dssdev)
+{
+	int m;
+
+	if (!hdmi.custom_set) {
+		struct fb_videomode vm = vesa_modes[4];
+		if (hdmi_read_edid(NULL)) {
+			hdmi_get_monspecs(&dssdev->panel.monspecs);
+			m = get_best_res(&dssdev->panel.monspecs);
+			if (m >= 0)
+				vm = dssdev->panel.monspecs.modedb[m];
+		}
+		dssdev->panel.timings.x_res = vm.xres;
+		dssdev->panel.timings.y_res = vm.yres;
+		hdmi_set_timings(&vm, false);
+		hdmi.custom_set = 1;
+	}
+}
+
 static int hdmi_power_on(struct omap_dss_device *dssdev)
 {
 	int r;
@@ -346,10 +398,7 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 		dssdev->panel.timings.x_res,
 		dssdev->panel.timings.y_res);
 
-	if (!hdmi.custom_set) {
-		struct fb_videomode vesa_vga = vesa_modes[4];
-		hdmi_set_timings(&vesa_vga, false);
-	}
+	hdmi_set_best_default(dssdev);
 
 	omapfb_fb2dss_timings(&hdmi.cfg.timings, &dssdev->panel.timings);
 

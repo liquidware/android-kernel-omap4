@@ -66,14 +66,6 @@ static int hdmi_panel_probe(struct omap_dss_device *dssdev)
 	dssdev->panel.config = OMAP_DSS_LCD_TFT |
 			OMAP_DSS_LCD_IVS | OMAP_DSS_LCD_IHS;
 
-	/*
-	 * Initialize the timings to 640 * 480
-	 * This is only for framebuffer update not for TV timing setting
-	 * Setting TV timing will be done only on enable
-	 */
-	dssdev->panel.timings.x_res = 640;
-	dssdev->panel.timings.y_res = 480;
-
 	/* sysfs entry to provide user space control to set deepcolor mode */
 	if (device_create_file(&dssdev->dev, &dev_attr_deepcolor))
 		DSSERR("failed to create sysfs file\n");
