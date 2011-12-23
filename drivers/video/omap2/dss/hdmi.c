@@ -395,7 +395,11 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 		dssdev->panel.timings.x_res,
 		dssdev->panel.timings.y_res);
 
-	hdmi_set_best_default(dssdev);
+	//hdmi_set_best_default(dssdev);
+	if (!hdmi.custom_set) {
+		struct fb_videomode vesa_vga = cea_modes[16]; // vesa_modes[4];
+		hdmi_set_timings(&vesa_vga, false);
+	}
 
 	omapfb_fb2dss_timings(&hdmi.cfg.timings, &dssdev->panel.timings);
 
