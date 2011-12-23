@@ -120,6 +120,10 @@ static struct omap_opp_def __initdata omap443x_opp_def_list[] = {
 	OPP_INITIALIZER("iva", "dpll_iva_m5x2_ck", "iva", true, 266100000, OMAP4430_VDD_IVA_OPP100_UV),
 	/* IVA OPP3 - OPP-Turbo */
 	OPP_INITIALIZER("iva", "dpll_iva_m5x2_ck", "iva", false, 332000000, OMAP4430_VDD_IVA_OPPTURBO_UV),
+	/* SGX OPP1 - OPP50 */
+	OPP_INITIALIZER("gpu", "dpll_per_m7x2_ck", "core", true, 153600000, OMAP4430_VDD_CORE_OPP50_UV),
+	/* SGX OPP2 - OPP100 */
+	OPP_INITIALIZER("gpu", "dpll_per_m7x2_ck", "core", true, 307200000, OMAP4430_VDD_CORE_OPP100_UV),
 	/* ABE OPP1 - OPP50 */
 	OPP_INITIALIZER("aess", "dpll_abe_x2_ck", "iva", true, 98304000, OMAP4430_VDD_IVA_OPP50_UV),
 	/* ABE OPP2 - OPP100 */
@@ -230,10 +234,16 @@ static struct omap_opp_def __initdata omap446x_opp_def_list[] = {
         OPP_INITIALIZER("aess", "dpll_abe_x2_ck", "iva", true, 98304000, OMAP4460_VDD_IVA_OPP50_UV),
         /* ABE OPP2 - OPP100 */                                                 
 //        OPP_INITIALIZER("aess", "dpll_abe_x2_ck", "iva", true, 196608000, OMAP4460_VDD_IVA_OPP100_UV),
+	/* SGX OPP1 - OPP50 */
+	OPP_INITIALIZER("gpu", "dpll_per_m7x2_ck", "core", true, 153600000, OMAP4460_VDD_CORE_OPP50_UV),
+	/* SGX OPP2 - OPP100 */
+	OPP_INITIALIZER("gpu", "dpll_per_m7x2_ck", "core", true, 307200000, OMAP4460_VDD_CORE_OPP100_UV),
+	/* SGX OPP3 - OPPOV */
+	OPP_INITIALIZER("gpu", "dpll_per_m7x2_ck", "core", false, 384000000, OMAP4460_VDD_CORE_OPP100_OV_UV),
 
-	/* TODO: add DSP, fdif, gpu */
-
+	/* TODO: add DSP, aess, fdif */
 };
+
 
 	/**
 	 * omap4_opp_enable() - Enable the OPP corresponding to freq
