@@ -22,6 +22,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/delay.h>
 #include <sound/pcm.h>
 #include <sound/soc.h>
 #include <asm/mach-types.h>
@@ -32,7 +33,7 @@
 static int omap4_hdmi_dai_hw_params(struct snd_pcm_substream *substream,
 		struct snd_pcm_hw_params *params)
 {
-	int i;
+	int i, count = 0;
 	struct omap_overlay_manager *mgr = NULL;
 	struct device *dev = substream->pcm->card->dev;
 
@@ -50,9 +51,12 @@ static int omap4_hdmi_dai_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* Make sure HDMI is power-on to avoid L3 interconnect errors */
-	if (mgr->device->state != OMAP_DSS_DISPLAY_ACTIVE) {
+	while (mgr->device->state != OMAP_DSS_DISPLAY_ACTIVE) {
+		msleep(50);
+		if (count > 5)
+			return -EIO;
 		dev_err(dev, "HDMI display is not active!\n");
-		return -EIO;
+		count++;
 	}
 
 	return 0;
@@ -70,7 +74,7 @@ static struct snd_soc_dai_link omap4_hdmi_dai = {
 	.cpu_dai_name = "hdmi-audio-dai",
 	.platform_name = "omap-pcm-audio",
 	.codec_name = "omap-hdmi-codec",
-	.codec_dai_name = "omap4-hdmi-audio-codec",
+	.codec_dai_name = "hdmi-audio-codec",
 	.ops = &omap4_hdmi_dai_ops,
 };
 
@@ -82,38 +86,18 @@ static struct snd_soc_card snd_soc_omap4_hdmi = {
 	.num_links = 1,
 };
 
-static __devinit int omap4_hdmi_probe(struct platform_device *pdev)
+static struct snd_soc_dai_driver dai[] = {
 {
-	struct snd_soc_card *card = &snd_soc_omap4_hdmi;
-	int ret;
-
-	card->dev = &pdev->dev;
-
-	ret = snd_soc_register_card(card);
-	if (ret) {
-		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n", ret);
-		card->dev = NULL;
-		return ret;
-	}
-	return 0;
-}
-
-static int __devexit omap4_hdmi_remove(struct platform_device *pdev)
-{
-	struct snd_soc_card *card = platform_get_drvdata(pdev);
-
-	snd_soc_unregister_card(card);
-	card->dev = NULL;
-	return 0;
-}
-
-static struct platform_driver omap4_hdmi_driver = {
-	.driver = {
-		.name = "omap4-hdmi-audio",
-		.owner = THIS_MODULE,
+	.name = "HDMI",
+	.playback = {
+		.stream_name = "HDMI Playback",
+		.channels_min = 2,
+		.channels_max = 8,
+		.rates = SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 |
+				SNDRV_PCM_RATE_48000,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE,
 	},
-	.probe = omap4_hdmi_probe,
-	.remove = __devexit_p(omap4_hdmi_remove),
+},
 };
 
 static struct platform_device *omap4_hdmi_snd_device;
@@ -136,6 +120,9 @@ static int __init omap4_hdmi_soc_init(void)
 		return -ENOMEM;
 	}
 
+	ret = snd_soc_register_dais(&omap4_hdmi_snd_device->dev, dai, ARRAY_SIZE(dai));
+	if (ret < 0)
+		goto err;
 	platform_set_drvdata(omap4_hdmi_snd_device, &snd_soc_omap4_hdmi);
 
 	ret = platform_device_add(omap4_hdmi_snd_device);
@@ -159,3 +146,4 @@ module_exit(omap4_hdmi_soc_exit);
 MODULE_AUTHOR("Ricardo Neri <ricardo.neri@ti.com>");
 MODULE_DESCRIPTION("ALSA SoC OMAP4 HDMI AUDIO");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS("platform:" DRV_NAME);
