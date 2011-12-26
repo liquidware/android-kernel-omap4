@@ -999,6 +999,8 @@ static int hdmi_runtime_resume(struct device *dev)
 {
 	int r;
 
+        clk_enable(hdmi.sys_clk);
+
 	r = dss_runtime_get();
 	if (r < 0)
 		goto err_get_dss;
@@ -1006,8 +1008,6 @@ static int hdmi_runtime_resume(struct device *dev)
 	r = dispc_runtime_get();
 	if (r < 0)
 		goto err_get_dispc;
-
-	clk_enable(hdmi.sys_clk);
 
 	return 0;
 
