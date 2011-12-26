@@ -4,6 +4,7 @@ config SND_OMAP_SOC
 
 config SND_OMAP_SOC_ABE_DSP
 	tristate
+	select SND_DYNAMIC_MINORS
 
 config SND_OMAP_SOC_MCBSP
 	tristate
@@ -16,7 +17,6 @@ config SND_OMAP_SOC_HDMI
 	tristate
 
 config SND_OMAP_SOC_ABE
-	select SND_DYNAMIC_MINORS
 	tristate
 
 config SND_OMAP_SOC_DMIC
@@ -123,6 +123,7 @@ config SND_OMAP_SOC_OMAP4_HDMI
 	depends on SND_OMAP_SOC && OMAP4_DSS_HDMI && OMAP2_DSS
 	depends on (MACH_OMAP_4430SDP || MACH_OMAP4_PANDA)
 	select SND_OMAP_SOC_HDMI
+	select SND_SOC_OMAP_HDMI_CODEC
 	help
 	  Say Y if you want to add support for SoC HDMI audio on Texas Instruments
 	  SDP4430 or Panda
