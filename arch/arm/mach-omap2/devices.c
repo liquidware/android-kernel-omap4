@@ -386,6 +386,7 @@ static void omap_init_mcspi(void)
 static inline void omap_init_mcspi(void) {}
 #endif
 
+#if defined(CONFIG_CPU_HAS_PMU)
 static struct resource omap2_pmu_resource = {
 	.start	= 3,
 	.end	= 3,
@@ -415,6 +416,9 @@ static void omap_init_pmu(void)
 
 	platform_device_register(&omap_pmu_device);
 }
+#else
+static void omap_init_pmu(void) {}
+#endif
 
 
 #if defined(CONFIG_CRYPTO_DEV_OMAP_SHAM) || defined(CONFIG_CRYPTO_DEV_OMAP_SHAM_MODULE)
