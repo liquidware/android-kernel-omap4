@@ -3462,9 +3462,22 @@ static int dispc_runtime_resume(struct device *dev)
 	return 0;
 }
 
+/*
+ * when dispc_runtime_resume is called by pm code in early resume,
+ * dss_runtime_get () fails because it's still in suspend.
+ * this resume callback serves to redo the broken runtime resume
+ * action in late suspend.
+ */
+
+static int dispc_resume(struct device *dev)
+{
+	return dispc_runtime_resume(dev);
+}
+
 static const struct dev_pm_ops dispc_pm_ops = {
 	.runtime_suspend = dispc_runtime_suspend,
 	.runtime_resume = dispc_runtime_resume,
+	.resume = dispc_resume,
 };
 
 static struct platform_driver omap_dispchw_driver = {

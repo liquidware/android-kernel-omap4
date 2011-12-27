@@ -869,9 +869,22 @@ err_get_dss:
 	return r;
 }
 
+/*
+ * when dispc_runtime_resume is called by pm code in early resume,              
+ * dss_runtime_get () fails because it's still in suspend.
+ * This resume callback serves to redo the runtime pm get broken
+ * by it happening in early suspend
+ */ 
+
+static int hdmi_resume(struct device *dev)
+{
+	return hdmi_runtime_resume(dev);
+}
+
 static const struct dev_pm_ops hdmi_pm_ops = {
 	.runtime_suspend = hdmi_runtime_suspend,
 	.runtime_resume = hdmi_runtime_resume,
+	.resume = hdmi_resume,
 };
 
 static struct platform_driver omapdss_hdmihw_driver = {
