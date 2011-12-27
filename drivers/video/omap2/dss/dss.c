@@ -699,6 +699,11 @@ struct clk *dss_get_ick(void)
 	return clk_get(&dss.pdev->dev, "ick");
 }
 
+int dss_runtime_pm_enabled(void)
+{
+        return pm_runtime_enabled(&dss.pdev->dev);
+}
+
 int dss_runtime_get(void)
 {
 	int r;
