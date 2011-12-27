@@ -707,6 +707,11 @@ static void dss_put_clocks(void)
 	clk_put(dss.dss_clk);
 }
 
+int dss_runtime_pm_enabled(void)
+{
+        return pm_runtime_enabled(&dss.pdev->dev);
+}
+
 int dss_runtime_get(void)
 {
 	int r;

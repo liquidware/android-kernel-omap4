@@ -3451,6 +3451,9 @@ static int dispc_runtime_resume(struct device *dev)
 {
 	int r;
 
+	if (!dss_runtime_pm_enabled())
+		return -EBUSY;
+
 	r = dss_runtime_get();
 	if (r < 0) {
 		pr_err("dispc_runtime_resume: unable to get dss\n");

@@ -713,4 +713,6 @@ int omap_rfbi_update(struct omap_dss_device *dssdev,
 int omap_rfbi_configure(struct omap_dss_device *dssdev, int pixel_size,
 		int data_lines);
 
+int dss_runtime_pm_enabled(void);
+
 #endif
