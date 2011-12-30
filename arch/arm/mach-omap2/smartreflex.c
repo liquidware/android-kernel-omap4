@@ -705,26 +705,32 @@ void omap_sr_enable(struct voltagedomain *voltdm)
  * the smartreflex class disable not to reset the VP voltage after
  * disabling smartreflex.
  */
-void omap_sr_disable(struct voltagedomain *voltdm)
+int  omap_sr_disable(struct voltagedomain *voltdm)
 {
 	struct omap_sr *sr = _sr_lookup(voltdm);
 
-	if (IS_ERR(sr)) {
-		pr_warning("%s: omap_sr struct for sr_%s not found\n",
-			__func__, voltdm->name);
-		return;
-	}
+        if (IS_ERR(sr)) {                                                       
+                pr_warning("%s: omap_sr struct for sr_%s not found\n",          
+                        __func__, voltdm->name);                                
+                return -EINVAL;                                                         
+        }                                                                       
+                                                                                
+        /* Check if SR clocks are already disabled. If yes do nothing */        
+        if (!pm_runtime_enabled(&sr->pdev->dev) ||                              
+                                          pm_runtime_suspended(&sr->pdev->dev)) 
+                return -EBUSY;                                                         
+
 
 	if (!sr->autocomp_active)
-		return;
+		return -EBUSY;
 
 	if (!sr_class || !(sr_class->disable)) {
 		dev_warn(&sr->pdev->dev, "%s: smartreflex class driver not"
 			"registered\n", __func__);
-		return;
+		return -EINVAL;
 	}
 
-	sr_class->disable(voltdm, 0);
+	return sr_class->disable(voltdm, 0);
 }
 
 /**
