@@ -609,9 +609,9 @@ void sr_disable(struct voltagedomain *voltdm)
 	}
 
 	/* Check if SR clocks are already disabled. If yes do nothing */
-	if (pm_runtime_suspended(&sr->pdev->dev))
+	if (!pm_runtime_enabled(&sr->pdev->dev) ||
+					  pm_runtime_suspended(&sr->pdev->dev))
 		return;
-
 	/*
 	 * Disable SR if only it is indeed enabled. Else just
 	 * disable the clocks.
