@@ -702,7 +702,8 @@ static int _dvfs_scale(struct device *req_dev, struct device *target_dev,
 	curr_volt = voltdm_get_voltage(voltdm);
 
 	/* Disable smartreflex module across voltage and frequency scaling */
-	omap_sr_disable(voltdm);
+	if (omap_sr_disable(voltdm))
+		return -EAGAIN;
 
 	if (curr_volt == new_volt) {
 		volt_scale_dir = DVFS_VOLT_SCALE_NONE;
@@ -876,8 +877,10 @@ int omap_device_scale(struct device *req_dev, struct device *target_dev,
 	/* Do the actual scaling */
 	ret = _dvfs_scale(req_dev, target_dev, tdvfs_info);
 	if (ret) {
-		dev_err(target_dev, "%s: scale by %s failed %d[f=%ld, v=%ld]\n",
-			__func__, dev_name(req_dev), ret, freq, volt);
+		if (ret != -EAGAIN)
+			dev_err(target_dev, "%s: scale by %s failed "
+				"%d[f=%ld, v=%ld]\n",
+				 __func__, dev_name(req_dev), ret, freq, volt);
 		_remove_freq_request(tdvfs_info, req_dev,
 			target_dev);
 		_remove_vdd_user(tdvfs_info, target_dev);
