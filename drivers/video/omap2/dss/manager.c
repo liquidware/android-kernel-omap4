@@ -1341,6 +1341,9 @@ static int omap_dss_mgr_apply(struct omap_overlay_manager *mgr)
 
 	DSSDBG("omap_dss_mgr_apply(%s)\n", mgr->name);
 
+	if (!dss_runtime_pm_enabled())
+		return -EAGAIN;
+
 	r = dispc_runtime_get();
 	if (r)
 		return r;
