@@ -101,6 +101,11 @@ enum drm_connector_status omap_connector_detect(
 	struct omap_dss_driver *dssdrv = dssdev->driver;
 	enum drm_connector_status ret;
 
+	if (!dss_runtime_pm_enabled()) {
+		pr_err("*** drm connector poll occurred in resume, claiming it's disconnected\n");
+                return  connector_status_disconnected;
+	}
+
 	if (dssdrv->detect(dssdev))
 		ret = connector_status_connected;
 	else

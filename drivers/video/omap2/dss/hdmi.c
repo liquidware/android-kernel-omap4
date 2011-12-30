@@ -484,14 +484,18 @@ bool omapdss_hdmi_detect(struct omap_dss_device *dssdev)
 	mutex_lock(&hdmi.lock);
 
 	r = hdmi_runtime_get();
-	BUG_ON(r);
-
-	r = hdmi.ip_data.ops->detect(&hdmi.ip_data);
-
+	if (r) {
+		/* can't check, say it's disconnected */
+		r = 0;
+		goto out;
+	}
+	r = hdmi.ip_data.ops->detect(&hdmi.ip_data) == 1;
 	hdmi_runtime_put();
+
+out:
 	mutex_unlock(&hdmi.lock);
 
-	return r == 1;
+	return r;
 }
 
 int omapdss_hdmi_display_enable(struct omap_dss_device *dssdev)
