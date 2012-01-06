@@ -45,8 +45,8 @@ static struct omap_device_pm_latency omap_dmm_latency[] = {
 
 void __init omap_dmm_init(void)
 {
-	struct omap_hwmod *oh = NULL;
-	struct omap_device *od = NULL;
+	struct omap_hwmod *oh;
+	struct platform_device *pd;
 
 	oh = omap_hwmod_lookup(dmm_data.oh_name);
 	if (!oh)
@@ -55,7 +55,7 @@ void __init omap_dmm_init(void)
 	dmm_data.base = omap_hwmod_get_mpu_rt_va(oh);
 	dmm_data.irq = oh->mpu_irqs[0].irq;
 
-	od = omap_device_build(dmm_data.oh_name, -1, oh, &dmm_data,
+	pd = omap_device_build(dmm_data.oh_name, -1, oh, &dmm_data,
 				sizeof(dmm_data), omap_dmm_latency,
 				ARRAY_SIZE(omap_dmm_latency), false);
 
