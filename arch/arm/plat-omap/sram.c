@@ -181,7 +181,7 @@ static void __init omap_map_sram(void)
                 return;                                                         
         }  
 
-	omap_sram_io_desc[0].virtual = omap_sram_base;
+	omap_sram_io_desc[0].virtual = (unsigned long)omap_sram_base;
 	base = omap_sram_start;
 	base = ROUND_DOWN(base, PAGE_SIZE);
 	omap_sram_io_desc[0].pfn = __phys_to_pfn(base);
@@ -205,7 +205,7 @@ static void __init omap_map_sram(void)
 		 * Map a page of SRAM with strongly ordered attributes
 		 * for interconnect barrier usage.
 		 */
-		omap_sram_io_desc[1].virtual =
+		omap_sram_io_desc[1].virtual = (unsigned long)
 			omap_sram_base + omap_sram_io_desc[0].length;
 		omap_barrier_base = omap_sram_io_desc[1].virtual;
 		base = omap_sram_start + omap_sram_io_desc[0].length;
