@@ -205,6 +205,8 @@ fail:
 
 	i = -1;
 done:
+	hdmi.mode = hdmi.cfg.cm.mode;
+	pr_err("hdmi_set_timings: hdmi.mode=%d\n", hdmi.mode);
 
 	DSSDBG("%s-%d\n", hdmi.cfg.cm.mode ? "CEA" : "VESA", hdmi.cfg.cm.code);
 	return i >= 0;
