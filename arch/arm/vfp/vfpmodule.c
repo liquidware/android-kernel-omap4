@@ -48,31 +48,6 @@ union vfp_state *vfp_current_hw_state[NR_CPUS];
  */
 unsigned int VFP_arch;
 
-static bool vfp_state_in_hw(unsigned int cpu, struct thread_info *thread)
-{
-#ifdef CONFIG_SMP
-	if (thread->vfpstate.hard.cpu != cpu)
-		return false;
-#endif
-	return vfp_current_hw_state[cpu] == &thread->vfpstate;
-}
-
-/*
- * Force a reload of the VFP context from the thread structure.  We do
- * this by ensuring that access to the VFP hardware is disabled, and
- * clear vfp_current_hw_state.  Must be called from non-preemptible context.
- */
-static void vfp_force_reload(unsigned int cpu, struct thread_info *thread)
-{
-	if (vfp_state_in_hw(cpu, thread)) {
-		fmxr(FPEXC, fmrx(FPEXC) & ~FPEXC_EN);
-		vfp_current_hw_state[cpu] = NULL;
-	}
-#ifdef CONFIG_SMP
-	thread->vfpstate.hard.cpu = NR_CPUS;
-#endif
-}
-
 /*
  * Per-thread VFP initialization.
  */
