@@ -319,7 +319,7 @@ static struct omap_device_pm_latency omap_dmic_latency[] = {
 static void omap_init_dmic(void)                                               
 {                                                                              
        struct omap_hwmod *oh;                                                  
-       struct omap_device *od;                                                 
+       struct platform_device *pd;                                                 
                                                                                
        oh = omap_hwmod_lookup("dmic");                                         
        if (!oh) {                                                              
@@ -327,10 +327,10 @@ static void omap_init_dmic(void)
                return;                                                         
        }                                                                       
                                                                                
-       od = omap_device_build("omap-dmic-dai", -1, oh, NULL, 0,                
+       pd = omap_device_build("omap-dmic-dai", -1, oh, NULL, 0,                
                                omap_dmic_latency,                              
                                ARRAY_SIZE(omap_dmic_latency), 0);              
-       if (IS_ERR(od))                                                         
+       if (IS_ERR(pd))                                                         
                printk(KERN_ERR "Could not build omap_device for omap-dmic-dai\n");
 }                                                                              
 #else                                                                          
@@ -493,7 +493,7 @@ static struct omap_device_pm_latency omap_aess_latency[] = {
 static void omap_init_aess(void)
 {
 	struct omap_hwmod *oh;
-	struct omap_device *od;
+	struct platform_device *pd;
 	struct omap4_abe_dsp_pdata *pdata;
 
 	oh = omap_hwmod_lookup("aess");
@@ -511,14 +511,14 @@ static void omap_init_aess(void)
 	/* FIXME: Add correct context loss counter */
 	//pdata->get_context_loss_count = omap_pm_get_dev_context_loss_count;
 
-	od = omap_device_build("aess", -1, oh, pdata,
+	pd = omap_device_build("aess", -1, oh, pdata,
 				sizeof(struct omap4_abe_dsp_pdata),
 				omap_aess_latency,
 				ARRAY_SIZE(omap_aess_latency), 0);
 
 	kfree(pdata);
 
-	if (IS_ERR(od))
+	if (IS_ERR(pd))
 		printk(KERN_ERR "Could not build omap_device for omap-aess-audio\n");
 }
 #else
@@ -955,7 +955,7 @@ static struct platform_device omap_omaplfb_device = {
 static void omap_init_gpu(void)
 {
 	struct omap_hwmod *oh;
-	struct omap_device *od;
+	struct platform_device *pd;
 	int max_omap_drm_hwmod_name_len = 16;
 	char oh_name[max_omap_drm_hwmod_name_len];
 	int l;
@@ -991,10 +991,10 @@ static void omap_init_gpu(void)
 	if (cpu_is_omap446x())
 		pdata->ovfreqs = 1;
 
-	od = omap_device_build(name, 0, oh, pdata,
+	pd = omap_device_build(name, 0, oh, pdata,
 			     sizeof(struct gpu_platform_data),
 			     omap_drm_latency, ARRAY_SIZE(omap_drm_latency), 0);
-	WARN(IS_ERR(od), "Could not build omap_device for %s %s\n",
+	WARN(IS_ERR(pd), "Could not build omap_device for %s %s\n",
 	     name, oh_name);
 
 	kfree(pdata);
