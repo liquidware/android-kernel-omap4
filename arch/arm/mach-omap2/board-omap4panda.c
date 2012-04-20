@@ -28,6 +28,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/fixed.h>
 #include <linux/wl12xx.h>
+#include <linux/i2c/tsc2007.h>
 #include <linux/netdevice.h>
 #include <linux/if_ether.h>
 #include <linux/ti_wilink_st.h>
@@ -358,13 +359,26 @@ static struct twl4030_platform_data omap4_panda_twldata = {
 	.vaux1		= &omap4_panda_vaux1,
 };
 
-/*
- * Display monitor features are burnt in their EEPROM as EDID data. The EEPROM
- * is connected as I2C slave device, and can be accessed at address 0x50
- */
-static struct i2c_board_info __initdata panda_i2c_eeprom[] = {
+static struct tsc2007_platform_data tsc2007_info = {
+	.model				= 2007,
+	.x_plate_ohms		= 180,
+    .get_pendown_state  = NULL,
+};
+
+static struct i2c_board_info __initdata i2c3_clients[] = {
+	/*
+	 * Display monitor features are burnt in their EEPROM as EDID data. The EEPROM
+	 * is connected as I2C slave device, and can be accessed at address 0x50
+	 */
 	{
 		I2C_BOARD_INFO("eeprom", 0x50),
+	},
+	{
+		I2C_BOARD_INFO("tsc2007", 0x48),
+		.platform_data	= &tsc2007_info,
+	},
+	{
+		I2C_BOARD_INFO("itaniumpack_battery", 0x0B)
 	},
 };
 
@@ -386,8 +400,8 @@ static int __init omap4_panda_i2c_init(void)
 	 * Bus 3 is attached to the DVI port where devices like the pico DLP
 	 * projector don't work reliably with 400kHz
 	 */
-	omap_register_i2c_bus(3, 100, panda_i2c_eeprom,
-					ARRAY_SIZE(panda_i2c_eeprom));
+	omap_register_i2c_bus(3, 100, i2c3_clients,
+			ARRAY_SIZE(i2c3_clients));
 	omap_register_i2c_bus(4, 400, NULL, 0);
 	return 0;
 }
@@ -616,6 +630,7 @@ static void omap4_panda_hdmi_mux_init(void)
 				    ARRAY_SIZE(panda_hdmi_gpios));
 	if (status)
 		pr_err("Cannot request HDMI GPIOs\n");
+
 }
 
 static struct omap_dss_device  omap4_panda_hdmi_device = {
@@ -766,9 +781,9 @@ static void __init omap4_panda_init(void)
 		package = OMAP_PACKAGE_CBL;
 	omap4_mux_init(board_mux, NULL, package);
 
-	omap_mux_init_gpio(GPIO_WIFI_IRQ, OMAP_PIN_INPUT |                      
-                                OMAP_PIN_OFF_WAKEUPENABLE);                     
-        omap_mux_init_gpio(GPIO_WIFI_PMENA, OMAP_PIN_OUTPUT); 
+	omap_mux_init_gpio(GPIO_WIFI_IRQ, OMAP_PIN_INPUT |
+                                OMAP_PIN_OFF_WAKEUPENABLE);
+        omap_mux_init_gpio(GPIO_WIFI_PMENA, OMAP_PIN_OUTPUT);
 
 	if (wl12xx_set_platform_data(&omap_panda_wlan_data))
 		pr_err("error setting wl12xx data\n");
@@ -821,7 +836,7 @@ MACHINE_START(OMAP4_PANDA, "OMAP4 Panda board")
 	.init_machine	= omap4_panda_init,
 	.timer		= &omap4_timer,
 	.dt_compat	= omap4_panda_match,
-#ifdef CONFIG_ZONE_DMA                                                          
+#ifdef CONFIG_ZONE_DMA
         .dma_zone_size  = 500 * 1024 * 1024,
-#endif 
+#endif
 MACHINE_END
