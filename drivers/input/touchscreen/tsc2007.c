@@ -1,10 +1,12 @@
 /*
  * drivers/input/touchscreen/tsc2007.c
  *
- * Copyright (c) 2008 MtekVision Co., Ltd.
- *	Kwangwoo Lee <kwlee@mtekvision.com>
+ * Copyright (c) 2012 Liquidware
+ *  Chris Ladden <chris.ladden@liquidware.com>
+ *
  *
  * Using code from:
+ * 	Copyright (c) 2008 Kwangwoo Lee
  *  - ads7846.c
  *	Copyright (c) 2005 David Brownell
  *	Copyright (c) 2006 Nokia Corporation
@@ -27,12 +29,15 @@
 #include <linux/i2c.h>
 #include <linux/i2c/tsc2007.h>
 
-#define TSC2007_MEASURE_TEMP0		(0x0 << 4)
+#define TS_POLL_DELAY			10 /* ms delay between samples */
+#define TS_POLL_PERIOD			10 /* ms delay between samples */
+
+#define TSC2007_MEASURE_TEMP0	(0x0 << 4)
 #define TSC2007_MEASURE_AUX		(0x2 << 4)
-#define TSC2007_MEASURE_TEMP1		(0x4 << 4)
+#define TSC2007_MEASURE_TEMP1	(0x4 << 4)
 #define TSC2007_ACTIVATE_XN		(0x8 << 4)
 #define TSC2007_ACTIVATE_YN		(0x9 << 4)
-#define TSC2007_ACTIVATE_YP_XN		(0xa << 4)
+#define TSC2007_ACTIVATE_YP_XN	(0xa << 4)
 #define TSC2007_SETUP			(0xb << 4)
 #define TSC2007_MEASURE_X		(0xc << 4)
 #define TSC2007_MEASURE_Y		(0xd << 4)
@@ -61,33 +66,29 @@ struct ts_event {
 	u16	x;
 	u16	y;
 	u16	z1, z2;
+	u16 pressure;
 };
 
 struct tsc2007 {
 	struct input_dev	*input;
-	char			phys[32];
-
+	char	phys[32];
+	struct delayed_work	work;
 	struct i2c_client	*client;
-
-	u16			model;
-	u16			x_plate_ohms;
-	u16			max_rt;
-	unsigned long		poll_delay;
-	unsigned long		poll_period;
-
-	int			irq;
-
-	wait_queue_head_t	wait;
-	bool			stopped;
-
-	int			(*get_pendown_state)(void);
-	void			(*clear_penirq)(void);
+	u16		model;
+	u16		x_plate_ohms;
+	bool	pendown;
+	int		irq;
+	int		(*get_pendown_state)(void);
+	void	(*clear_penirq)(void);
 };
+
+int	pendown_cnt = 0;
 
 static inline int tsc2007_xfer(struct tsc2007 *tsc, u8 cmd)
 {
 	s32 data;
 	u16 val;
+
 
 	data = i2c_smbus_read_word_data(tsc->client, cmd);
 	if (data < 0) {
@@ -101,7 +102,8 @@ static inline int tsc2007_xfer(struct tsc2007 *tsc, u8 cmd)
 	 */
 	val = swab16(data) >> 4;
 
-	dev_dbg(&tsc->client->dev, "data: 0x%x, val: 0x%x\n", data, val);
+
+	//printk(KERN_ERR "tsc2007_xfer: data 0x%x, val: 0x%x\n", data, val);
 
 	return val;
 }
@@ -109,7 +111,7 @@ static inline int tsc2007_xfer(struct tsc2007 *tsc, u8 cmd)
 static void tsc2007_read_values(struct tsc2007 *tsc, struct ts_event *tc)
 {
 	/* y- still on; turn on only y+ (and ADC) */
-	tc->y = tsc2007_xfer(tsc, READ_Y);
+	tc->y = MAX_12BIT - tsc2007_xfer(tsc, READ_Y);
 
 	/* turn y- off, x+ on, then leave in lowpower */
 	tc->x = tsc2007_xfer(tsc, READ_X);
@@ -139,160 +141,129 @@ static u32 tsc2007_calculate_pressure(struct tsc2007 *tsc, struct ts_event *tc)
 		rt = (rt + 2047) >> 12;
 	}
 
+	tc->pressure = rt;
+
 	return rt;
 }
 
-static bool tsc2007_is_pen_down(struct tsc2007 *ts)
+static void tsc2007_send_down_event(struct tsc2007 *tsc, struct ts_event *tc)
 {
-	/*
-	 * NOTE: We can't rely on the pressure to determine the pen down
-	 * state, even though this controller has a pressure sensor.
-	 * The pressure value can fluctuate for quite a while after
-	 * lifting the pen and in some cases may not even settle at the
-	 * expected value.
-	 *
-	 * The only safe way to check for the pen up condition is in the
-	 * work function by reading the pen signal state (it's a GPIO
-	 * and IRQ). Unfortunately such callback is not always available,
-	 * in that case we assume that the pen is down and expect caller
-	 * to fall back on the pressure reading.
-	 */
+	struct input_dev *input = tsc->input;
 
-	if (!ts->get_pendown_state)
-		return true;
+	input_report_abs(input, ABS_X, tc->x);
+	input_report_abs(input, ABS_Y, tc->y);
+	input_report_abs(input, ABS_PRESSURE, 1);
+	input_report_key(input, BTN_TOUCH, 1);
+	input_sync(input);
 
-	return ts->get_pendown_state();
+	printk(KERN_INFO "point(%4d,%4d), pressure (%4u)\n",
+		tc->x, tc->y, tc->pressure);
 }
 
-static irqreturn_t tsc2007_soft_irq(int irq, void *handle)
+static void tsc2007_send_up_event(struct tsc2007 *tsc, struct ts_event *tc)
 {
-	struct tsc2007 *ts = handle;
-	struct input_dev *input = ts->input;
+	struct input_dev *input = tsc->input;
+
+	dev_dbg(&tsc->client->dev, "UP\n");
+	input_report_abs(input, ABS_X, tc->x);
+	input_report_abs(input, ABS_Y, tc->y);
+	input_report_abs(input, ABS_PRESSURE, 0);
+	input_report_key(input, BTN_TOUCH, 0);
+	input_sync(input);
+}
+
+static void tsc2007_work(struct work_struct *work)
+{
+	struct tsc2007 *ts =
+		container_of(to_delayed_work(work), struct tsc2007, work);
 	struct ts_event tc;
 	u32 rt;
 
-	while (!ts->stopped && tsc2007_is_pen_down(ts)) {
+	//printk(KERN_INFO "tsc2007_work: rt=%d\n", rt);
+	tsc2007_read_values(ts, &tc);
 
-		/* pen is down, continue with the measurement */
-		tsc2007_read_values(ts, &tc);
+	rt = tsc2007_calculate_pressure(ts, &tc);
 
-		rt = tsc2007_calculate_pressure(ts, &tc);
 
-		if (rt == 0 && !ts->get_pendown_state) {
-			/*
-			 * If pressure reported is 0 and we don't have
-			 * callback to check pendown state, we have to
-			 * assume that pen was lifted up.
-			 */
-			break;
-		}
-
-		if (rt <= ts->max_rt) {
-			dev_dbg(&ts->client->dev,
-				"DOWN point(%4d,%4d), pressure (%4u)\n",
-				tc.x, tc.y, rt);
-
-			input_report_key(input, BTN_TOUCH, 1);
-			input_report_abs(input, ABS_X, tc.x);
-			input_report_abs(input, ABS_Y, tc.y);
-			input_report_abs(input, ABS_PRESSURE, rt);
-
-			input_sync(input);
-
-		} else {
-			/*
-			 * Sample found inconsistent by debouncing or pressure is
-			 * beyond the maximum. Don't report it to user space,
-			 * repeat at least once more the measurement.
-			 */
-			dev_dbg(&ts->client->dev, "ignored pressure %d\n", rt);
-		}
-
-		wait_event_timeout(ts->wait, ts->stopped,
-				   msecs_to_jiffies(ts->poll_period));
+	/* Use pressure to determine pen state */
+	if ((rt > 500)) {
+			pendown_cnt = 0;
+			if (ts->pendown) {
+				printk(KERN_INFO "tsc2007_work: UP\n");
+				tsc2007_send_up_event(ts, &tc);
+				ts->pendown = false;
+			}
+			goto out;
+	} else {
+		pendown_cnt++;
+		if (pendown_cnt < 2)
+			goto out;
+		printk(KERN_INFO "tsc2007_work: DOWN\n");
 	}
 
-	dev_dbg(&ts->client->dev, "UP\n");
+	if (rt) {
+		if (!ts->pendown) {
+			dev_dbg(&ts->client->dev, "DOWN\n");
+			ts->pendown = true;
+		}
 
-	input_report_key(input, BTN_TOUCH, 0);
-	input_report_abs(input, ABS_PRESSURE, 0);
-	input_sync(input);
+		tsc2007_send_down_event(ts, &tc);
 
-	if (ts->clear_penirq)
-		ts->clear_penirq();
-
-	return IRQ_HANDLED;
-}
-
-static irqreturn_t tsc2007_hard_irq(int irq, void *handle)
-{
-	struct tsc2007 *ts = handle;
-
-	if (!ts->get_pendown_state || likely(ts->get_pendown_state()))
-		return IRQ_WAKE_THREAD;
-
-	if (ts->clear_penirq)
-		ts->clear_penirq();
-
-	return IRQ_HANDLED;
-}
-
-static void tsc2007_stop(struct tsc2007 *ts)
-{
-	ts->stopped = true;
-	mb();
-	wake_up(&ts->wait);
-
-	disable_irq(ts->irq);
-}
-
-static int tsc2007_open(struct input_dev *input_dev)
-{
-	struct tsc2007 *ts = input_get_drvdata(input_dev);
-	int err;
-
-	ts->stopped = false;
-	mb();
-
-	enable_irq(ts->irq);
-
-	/* Prepare for touch readings - power down ADC and enable PENIRQ */
-	err = tsc2007_xfer(ts, PWRDOWN);
-	if (err < 0) {
-		tsc2007_stop(ts);
-		return err;
+	} else if (!ts->get_pendown_state && ts->pendown) {
+		/*
+		 * We don't have callback to check pendown state, so we
+		 * have to assume that since pressure reported is 0 the
+		 * pen was lifted up.
+		 */
+		tsc2007_send_up_event(ts, &tc);
+		ts->pendown = false;
 	}
 
-	return 0;
+ out:
+		schedule_delayed_work(&ts->work,
+				      msecs_to_jiffies(TS_POLL_PERIOD));
 }
 
-static void tsc2007_close(struct input_dev *input_dev)
+static void tsc2007_free_irq(struct tsc2007 *ts)
 {
-	struct tsc2007 *ts = input_get_drvdata(input_dev);
-
-	tsc2007_stop(ts);
+	free_irq(ts->irq, ts);
+	if (cancel_delayed_work_sync(&ts->work)) {
+		/*
+		 * Work was pending, therefore we need to enable
+		 * IRQ here to balance the disable_irq() done in the
+		 * interrupt handler.
+		 */
+		enable_irq(ts->irq);
+	}
 }
 
 static int __devinit tsc2007_probe(struct i2c_client *client,
 				   const struct i2c_device_id *id)
 {
 	struct tsc2007 *ts;
-	struct tsc2007_platform_data *pdata = client->dev.platform_data;
+	struct tsc2007_platform_data *pdata = pdata = client->dev.platform_data;
 	struct input_dev *input_dev;
 	int err;
 
+    printk(KERN_INFO "tsc2007_probe: begin\n");
+
 	if (!pdata) {
+		printk(KERN_ERR "tsc2007_probe: error platform data is required\n");
 		dev_err(&client->dev, "platform data is required!\n");
 		return -EINVAL;
 	}
 
 	if (!i2c_check_functionality(client->adapter,
-				     I2C_FUNC_SMBUS_READ_WORD_DATA))
+				     I2C_FUNC_SMBUS_READ_WORD_DATA)) {
+		printk(KERN_ERR "tsc2007_probe: error i2c bus not compatible\n");
 		return -EIO;
+	}
 
+	printk(KERN_INFO "tsc2007_probe: About to allocate new input device\n");
 	ts = kzalloc(sizeof(struct tsc2007), GFP_KERNEL);
 	input_dev = input_allocate_device();
 	if (!ts || !input_dev) {
+		printk(KERN_ERR "tsc2007_probe: error allocating device\n");
 		err = -ENOMEM;
 		goto err_free_mem;
 	}
@@ -300,67 +271,65 @@ static int __devinit tsc2007_probe(struct i2c_client *client,
 	ts->client = client;
 	ts->irq = client->irq;
 	ts->input = input_dev;
-	init_waitqueue_head(&ts->wait);
+	INIT_DELAYED_WORK(&ts->work, tsc2007_work);
 
 	ts->model             = pdata->model;
 	ts->x_plate_ohms      = pdata->x_plate_ohms;
-	ts->max_rt            = pdata->max_rt ? : MAX_12BIT;
-	ts->poll_delay        = pdata->poll_delay ? : 1;
-	ts->poll_period       = pdata->poll_period ? : 1;
 	ts->get_pendown_state = pdata->get_pendown_state;
 	ts->clear_penirq      = pdata->clear_penirq;
-
-	if (pdata->x_plate_ohms == 0) {
-		dev_err(&client->dev, "x_plate_ohms is not set up in platform data");
-		err = -EINVAL;
-		goto err_free_mem;
-	}
 
 	snprintf(ts->phys, sizeof(ts->phys),
 		 "%s/input0", dev_name(&client->dev));
 
-	input_dev->name = "TSC2007 Touchscreen";
+	input_dev->name = "tsc2007";
 	input_dev->phys = ts->phys;
 	input_dev->id.bustype = BUS_I2C;
 
-	input_dev->open = tsc2007_open;
-	input_dev->close = tsc2007_close;
-
-	input_set_drvdata(input_dev, ts);
-
-	input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
+	input_dev->evbit[0] = BIT_MASK(EV_KEY) | BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS);
 	input_dev->keybit[BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH);
 
-	input_set_abs_params(input_dev, ABS_X, 0, MAX_12BIT, pdata->fuzzx, 0);
-	input_set_abs_params(input_dev, ABS_Y, 0, MAX_12BIT, pdata->fuzzy, 0);
-	input_set_abs_params(input_dev, ABS_PRESSURE, 0, MAX_12BIT,
-			pdata->fuzzz, 0);
+	input_dev->absbit[ABS_X] = BIT(ABS_X);
+    input_dev->absbit[ABS_Y] = BIT(ABS_Y);
+    input_dev->absbit[ABS_PRESSURE] = BIT(ABS_PRESSURE);
+
+	input_set_abs_params(input_dev, ABS_X, 0, MAX_12BIT, 0, 0);
+	input_set_abs_params(input_dev, ABS_Y, 0, MAX_12BIT, 0, 0);
+	input_set_abs_params(input_dev, ABS_PRESSURE, 0, 1, 0, 0);
 
 	if (pdata->init_platform_hw)
 		pdata->init_platform_hw();
 
-	err = request_threaded_irq(ts->irq, tsc2007_hard_irq, tsc2007_soft_irq,
-				   IRQF_ONESHOT, client->dev.driver->name, ts);
+	/* Prepare for touch readings - power down ADC and enable PENIRQ */
+	printk(KERN_ERR "tsc2007_probe: prepare ADC for touch readings\n");
+	err = tsc2007_xfer(ts, PWRDOWN);
 	if (err < 0) {
-		dev_err(&client->dev, "irq %d busy?\n", ts->irq);
-		goto err_free_mem;
+		printk(KERN_ERR "tsc2007_probe: error cannot find tsc2007\n");
+		//perhaps bus is not ready, so don't fail here
+		//goto err_free_irq;
 	}
 
-	tsc2007_stop(ts);
-
+	printk(KERN_ERR "tsc2007_probe: about to register input device\n");
 	err = input_register_device(input_dev);
-	if (err)
+	if (err) {
+		printk(KERN_ERR "tsc2007_probe: error cannot register input device \n");
 		goto err_free_irq;
+	}
 
 	i2c_set_clientdata(client, ts);
+
+	printk(KERN_INFO "tsc2007_probe: Scheduling delayed work\n");
+	schedule_delayed_work(&ts->work,
+						  msecs_to_jiffies(TS_POLL_DELAY));
 
 	return 0;
 
  err_free_irq:
-	free_irq(ts->irq, ts);
+    printk(KERN_ERR "error: tsc2007_probe err_free_irq\n");
+	tsc2007_free_irq(ts);
 	if (pdata->exit_platform_hw)
 		pdata->exit_platform_hw();
  err_free_mem:
+    printk(KERN_ERR "error: tsc2007_probe err_free_mem\n");
 	input_free_device(input_dev);
 	kfree(ts);
 	return err;
@@ -371,7 +340,7 @@ static int __devexit tsc2007_remove(struct i2c_client *client)
 	struct tsc2007	*ts = i2c_get_clientdata(client);
 	struct tsc2007_platform_data *pdata = client->dev.platform_data;
 
-	free_irq(ts->irq, ts);
+	tsc2007_free_irq(ts);
 
 	if (pdata->exit_platform_hw)
 		pdata->exit_platform_hw();
@@ -382,7 +351,7 @@ static int __devexit tsc2007_remove(struct i2c_client *client)
 	return 0;
 }
 
-static const struct i2c_device_id tsc2007_idtable[] = {
+static struct i2c_device_id tsc2007_idtable[] = {
 	{ "tsc2007", 0 },
 	{ }
 };
@@ -412,6 +381,6 @@ static void __exit tsc2007_exit(void)
 module_init(tsc2007_init);
 module_exit(tsc2007_exit);
 
-MODULE_AUTHOR("Kwangwoo Lee <kwlee@mtekvision.com>");
+MODULE_AUTHOR("Chris Ladden <chris.ladden@liquidware.com>");
 MODULE_DESCRIPTION("TSC2007 TouchScreen Driver");
 MODULE_LICENSE("GPL");
