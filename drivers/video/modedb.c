@@ -37,6 +37,9 @@ EXPORT_SYMBOL_GPL(fb_mode_option);
  */
 
 static const struct fb_videomode modedb[] = {
+	/* 480x272 @ 60 Hz, 9.0 kHz hsync */
+        { NULL, 60, 480, 272, 12900, 2, 2, 2, 2, 41, 10, 0,
+	         FB_VMODE_NONINTERLACED },
 
 	/* 640x400 @ 70 Hz, 31.5 kHz hsync */
 	{ NULL, 70, 640, 400, 39721, 40, 24, 39, 9, 96, 2, 0,
@@ -805,6 +808,15 @@ const struct fb_videomode cea_modes[CEA_MODEDB_SIZE] = {
 	 .hsync_len = 44, .vsync_len = 5,
 	 .sync = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
 	 .flag = FB_FLAG_RATIO_16_9,
+	 .vmode = FB_VMODE_NONINTERLACED},
+// BeagleTouch OLED
+    /* 65: 480x272 @ 121Hz */
+	{.refresh = 15, .xres = 480, .yres = 272, .pixclock = 39721,
+	 .left_margin = 2, .right_margin = 2,
+	 .upper_margin = 2, .lower_margin = 2,
+	 .hsync_len = 124, .vsync_len = 3,
+	 .sync = 0,
+	 .flag = 0,
 	 .vmode = FB_VMODE_NONINTERLACED},
 };
 EXPORT_SYMBOL(cea_modes);
