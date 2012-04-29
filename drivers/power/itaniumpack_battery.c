@@ -31,7 +31,8 @@
 #undef DEBUG
 
 /* Battery update rate */
-#define itaniumpack_DELAY	250
+#define ITANIUMPACK_READ_DELAY		250
+#define ITANIUMPACK_READ_DELAY_ERR	5000 /* read delay if error is detected */
 
 /* Registers */
 #define BQ20Z80_REG_MANUFACTURER_ACCESS	0x00
@@ -118,7 +119,7 @@ struct bq27x00_device_info {
 	struct power_supply	bat;
 	struct power_supply	mains;
 	struct power_supply	usb;
-
+	int 		work_delay;
 	struct i2c_client	*client;
 };
 
@@ -501,7 +502,7 @@ static int bq27x00_battery_ac_online(struct bq27x00_device_info *di)
 	ac_online = (((unsigned int)deviceid == 0x0007));
 
 	if (ac_online) {
-		di->ac_online_time += itaniumpack_DELAY;
+		di->ac_online_time += di->work_delay;
 	}
 
 	return ac_online;
@@ -760,6 +761,14 @@ static void itaniumpack_battery_work(struct work_struct *work)
 	di = container_of(work, struct bq27x00_device_info, work.work);
 
 	di->temp_C = bq27x00_battery_temperature(di);
+	if (di->temp_C < 0) {
+		di->work_delay = ITANIUMPACK_READ_DELAY_ERR;
+		printk(KERN_ERR
+			   "itaniumpack: updating work every %dms\n",
+			   di->work_delay);
+		goto work_out;
+	}
+
 	di->voltage_uV = bq27x00_battery_voltage(di);
 	di->current_uA = bq27x00_battery_current(di);
 	di->charge_rsoc = bq27x00_battery_rsoc(di);
@@ -793,7 +802,8 @@ static void itaniumpack_battery_work(struct work_struct *work)
 	power_supply_changed(&di->mains);
 	power_supply_changed(&di->usb);
 
-	schedule_delayed_work(&di->work, itaniumpack_DELAY);
+work_out:
+	schedule_delayed_work(&di->work, di->work_delay);
 }
 
 
@@ -1189,7 +1199,9 @@ static int itaniumpack_battery_probe(struct i2c_client *client,
 	create_sysfs_entry(&di->dev[0]);
 
 	INIT_DELAYED_WORK_DEFERRABLE(&di->work, itaniumpack_battery_work);
-	schedule_delayed_work(&di->work, itaniumpack_DELAY);
+
+	di->work_delay = ITANIUMPACK_READ_DELAY;
+	schedule_delayed_work(&di->work, di->work_delay);
 
 	return 0;
 
