@@ -305,7 +305,7 @@ static int __devinit tsc2007_probe(struct i2c_client *client,
 	if (err < 0) {
 		printk(KERN_ERR "tsc2007_probe: error cannot find tsc2007\n");
 		//perhaps bus is not ready, so don't fail here
-		//goto err_free_irq;
+		goto err_free_irq;
 	}
 
 	printk(KERN_ERR "tsc2007_probe: about to register input device\n");
