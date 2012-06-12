@@ -762,11 +762,11 @@ static void itaniumpack_battery_work(struct work_struct *work)
 
 	di->temp_C = bq27x00_battery_temperature(di);
 	if (di->temp_C < 0) {
-		di->work_delay = ITANIUMPACK_READ_DELAY_ERR;
-		printk(KERN_ERR
-			   "itaniumpack: updating work every %dms\n",
-			   di->work_delay);
-		goto work_out;
+		//di->work_delay = ITANIUMPACK_READ_DELAY_ERR;
+		//printk(KERN_ERR
+		//	   "itaniumpack: updating work every %dms\n",
+		//	   di->work_delay);
+		//goto work_out;
 	}
 
 	di->voltage_uV = bq27x00_battery_voltage(di);
