@@ -42,6 +42,14 @@
 #include <plat/usb.h>
 #include <linux/regulator/consumer.h>
 
+enum ehci_hcd_omap_mode {
+	EHCI_HCD_OMAP_MODE_UNKNOWN,
+	EHCI_HCD_OMAP_MODE_PHY,
+	EHCI_HCD_OMAP_MODE_TLL,
+};
+
+struct usb_hcd *ghcd;
+
 /* EHCI Register Set */
 #define EHCI_INSNREG04					(0xA0)
 #define EHCI_INSNREG04_DISABLE_UNSUSPEND		(1 << 5)
@@ -67,6 +75,167 @@ static inline u32 ehci_read(void __iomem *base, u32 reg)
 {
 	return __raw_readl(base + reg);
 }
+
+/* Electrical test support */
+static void host_write_port(u8 port, const char *buf)
+{
+       struct usb_bus *bus;
+       struct ehci_hcd *ehci = hcd_to_ehci(ghcd);
+       u32 port_status;
+       u32 cmd;
+
+       /* Reset Device */
+       if (!strncmp(buf, "reset", 5)) {
+               printk(KERN_INFO "\n RESET PORT \n");
+               bus = hcd_to_bus(ghcd);
+               if (bus->root_hub->children[port])
+                       usb_reset_device(bus->root_hub->children[port]);
+       }
+
+       if (!strncmp(buf, "t-j", 3)) {
+               printk(KERN_INFO "\n TEST_J \n");
+
+#ifdef CONFIG_PM
+               /* Suspend bus first */
+               ehci_bus_suspend(ghcd);
+#endif
+               port_status = ehci_readl(ehci, &ehci->regs->port_status[port]);
+               cmd = ehci_readl(ehci, &ehci->regs->command);
+
+               port_status |= 1<<16; /* Test_Packet on Port2 */
+               ehci_writel(ehci, port_status, &ehci->regs->port_status[port]);
+
+               cmd |= CMD_RUN;
+               ehci_writel(ehci, cmd, &ehci->regs->command);
+       }
+
+       if (!strncmp(buf, "t-k", 3)) {
+               printk(KERN_INFO "\n TEST_K \n");
+
+#ifdef CONFIG_PM
+               /* Suspend bus first */
+               ehci_bus_suspend(ghcd);
+#endif
+               port_status = ehci_readl(ehci, &ehci->regs->port_status[port]);
+               cmd = ehci_readl(ehci, &ehci->regs->command);
+
+               port_status |= 2<<16; /* Test_Packet on Port2 */
+               ehci_writel(ehci, port_status, &ehci->regs->port_status[port]);
+
+               cmd |= CMD_RUN;
+               ehci_writel(ehci, cmd, &ehci->regs->command);
+       }
+
+       if (!strncmp(buf, "t-se0", 5)) {
+               printk(KERN_INFO "\n TEST_SE0_NAK \n");
+
+#ifdef CONFIG_PM
+               /* Suspend bus first */
+               ehci_bus_suspend(ghcd);
+#endif
+               port_status = ehci_readl(ehci, &ehci->regs->port_status[port]);
+               cmd = ehci_readl(ehci, &ehci->regs->command);
+
+               port_status |= 3<<16; /* Test_Packet on Port2 */
+               ehci_writel(ehci, port_status, &ehci->regs->port_status[port]);
+
+               cmd |= CMD_RUN;
+               ehci_writel(ehci, cmd, &ehci->regs->command);
+       }
+
+       /* Send test packet on suspended port */
+       if (!strncmp(buf, "t-pkt", 5)) {
+               printk(KERN_INFO "\n TEST_PACKET \n");
+
+#ifdef CONFIG_PM
+               /* Suspend bus first */
+               ehci_bus_suspend(ghcd);
+#endif
+               port_status = ehci_readl(ehci, &ehci->regs->port_status[port]);
+               cmd = ehci_readl(ehci, &ehci->regs->command);
+
+               /* Set Test packet bit */
+               port_status |= 4<<16; /* Test_Packet on Port2 */
+               ehci_writel(ehci, port_status, &ehci->regs->port_status[port]);
+
+               cmd |= CMD_RUN;
+               ehci_writel(ehci, cmd, &ehci->regs->command);
+       }
+
+       if (!strncmp(buf, "t-force", 7)) {
+               printk(KERN_INFO "\n TEST_FORCE \n");
+
+#ifdef CONFIG_PM
+               /* Suspend bus first */
+               ehci_bus_suspend(ghcd);
+#endif
+               port_status = ehci_readl(ehci, &ehci->regs->port_status[port]);
+               cmd = ehci_readl(ehci, &ehci->regs->command);
+
+               port_status |= 5<<16; /* Test_Packet on Port2 */
+               ehci_writel(ehci, port_status, &ehci->regs->port_status[port]);
+
+               cmd |= CMD_RUN;
+               ehci_writel(ehci, cmd, &ehci->regs->command);
+       }
+
+}
+
+static ssize_t
+host_show_port(struct device *dev,
+               struct device_attribute *attr, char *buf)
+{
+       return sprintf(buf, "\nOptions\t--> Description\n"
+                       "\nreset\t-->Reset Device"
+                       "\nt-j\t-->Send TEST_J on suspended port"
+                       "\nt-k\t-->Send TEST_K on suspended port"
+                       "\nt-pkt\t-->Send TEST_PACKET[53] on suspended port"
+                       "\nt-force\t-->Send TEST_FORCE_ENABLE on suspended port"
+                       "\nt-se0\t-->Send TEST_SE0_NAK on suspended port\n\n"
+                       );
+}
+
+/* Port 1 */
+static ssize_t
+host_write_port1(struct device *dev, struct device_attribute *attr,
+                       const char *buf, size_t n)
+{
+       struct usb_device       *udev = to_usb_device(dev);
+
+       usb_lock_device(udev);
+       host_write_port(0, buf);
+       usb_unlock_device(udev);
+       return n;
+}
+static DEVICE_ATTR(port1, S_IRUGO | S_IWUSR, host_show_port, host_write_port1);
+
+/* Port 2 */
+static ssize_t
+host_write_port2(struct device *dev, struct device_attribute *attr,
+                       const char *buf, size_t n)
+{
+       struct usb_device       *udev = to_usb_device(dev);
+
+       usb_lock_device(udev);
+       host_write_port(1, buf);
+       usb_unlock_device(udev);
+       return n;
+}
+static DEVICE_ATTR(port2, S_IRUGO | S_IWUSR, host_show_port, host_write_port2);
+
+/* Port 3 */
+static ssize_t
+host_write_port3(struct device *dev, struct device_attribute *attr,
+                       const char *buf, size_t n)
+{
+       struct usb_device       *udev = to_usb_device(dev);
+
+       usb_lock_device(udev);
+       host_write_port(2, buf);
+       usb_unlock_device(udev);
+       return n;
+}
+static DEVICE_ATTR(port3, S_IRUGO | S_IWUSR, host_show_port, host_write_port3);
 
 static void omap_ehci_soft_phy_reset(struct platform_device *pdev, u8 port)
 {
@@ -161,8 +330,19 @@ static int ehci_hcd_omap_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	hcd = usb_create_hcd(&ehci_omap_hc_driver, dev,
-			dev_name(dev));
+	/* Electrical test support
+	* Interface is /sys/devices/platform/usbhs-omap.0/ehci-omap.0/portn
+	*/
+	if (pdata->port_mode[0] != EHCI_HCD_OMAP_MODE_UNKNOWN)
+		   ret = device_create_file(&pdev->dev, &dev_attr_port1);
+	if (pdata->port_mode[1] != EHCI_HCD_OMAP_MODE_UNKNOWN)
+		   ret = device_create_file(&pdev->dev, &dev_attr_port2);
+	if (pdata->port_mode[2] != EHCI_HCD_OMAP_MODE_UNKNOWN)
+		   ret = device_create_file(&pdev->dev, &dev_attr_port3);
+
+	ghcd = hcd = usb_create_hcd(&ehci_omap_hc_driver, &pdev->dev,
+		dev_name(&pdev->dev));
+
 	if (!hcd) {
 		dev_err(dev, "failed to create hcd with err %d\n", ret);
 		ret = -ENOMEM;
@@ -264,6 +444,14 @@ static int ehci_hcd_omap_remove(struct platform_device *pdev)
 {
 	struct device *dev	= &pdev->dev;
 	struct usb_hcd *hcd	= dev_get_drvdata(dev);
+	struct ehci_hcd_omap_platform_data      *pdata = dev->platform_data;
+
+	if (pdata->port_mode[0] != EHCI_HCD_OMAP_MODE_UNKNOWN)
+		   device_remove_file(&pdev->dev, &dev_attr_port1);
+	if (pdata->port_mode[1] != EHCI_HCD_OMAP_MODE_UNKNOWN)
+		   device_remove_file(&pdev->dev, &dev_attr_port2);
+	if (pdata->port_mode[2] != EHCI_HCD_OMAP_MODE_UNKNOWN)
+		   device_remove_file(&pdev->dev, &dev_attr_port3);
 
 	usb_remove_hcd(hcd);
 	omap_usbhs_disable(dev);
